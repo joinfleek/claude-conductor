@@ -1,0 +1,13 @@
+{
+    "name": "claude-conductor-marketplace",
+    "owner": {
+        "name": "Shubham Parashar"
+    },
+    "plugins": [
+        {
+            "name": "claude-conductor",
+            "source": "./",
+            "description": "Model-routing ladder, memory nudges, persist-everywhere, and CLAUDE.md slimming for Claude Code."
+        }
+    ]
+}

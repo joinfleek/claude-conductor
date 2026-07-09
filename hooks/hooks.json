@@ -1,0 +1,47 @@
+{
+    "hooks": {
+        "SessionStart": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/model-routing-context.mjs",
+                        "timeout": 5
+                    },
+                    {
+                        "type": "command",
+                        "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/claude-md-size-check.mjs",
+                        "timeout": 5
+                    },
+                    {
+                        "type": "command",
+                        "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/conductor-doctor.mjs ${CLAUDE_PLUGIN_ROOT}",
+                        "timeout": 5
+                    }
+                ]
+            }
+        ],
+        "UserPromptSubmit": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/memory-nudge.mjs",
+                        "timeout": 5
+                    }
+                ]
+            }
+        ],
+        "Stop": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/post-task-reflect.mjs",
+                        "timeout": 10
+                    }
+                ]
+            }
+        ]
+    }
+}
