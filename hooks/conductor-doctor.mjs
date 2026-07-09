@@ -5,11 +5,21 @@
 // and emits a reminder; when a previously-OPEN check passes again, the SAME
 // entry is written back to RESOLVED — entries are updated in place, never
 // duplicated. Plugin root comes from argv[2] (${CLAUDE_PLUGIN_ROOT}).
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 const ROOT = process.argv[2] || join(homedir(), '.claude');
+// Optional GitHub mirroring: when a repo is configured (argv[3] or env), each
+// NEW failure opens one issue and recovery closes that SAME issue. Best-effort
+// only — any gh failure must never break the health check itself.
+const ISSUE_REPO = process.argv[3] || process.env.CONDUCTOR_ISSUE_REPO || '';
+const gh = (...args) => {
+    try {
+        return execFileSync('gh', args, { timeout: 8000, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+    } catch { return null; }
+};
 const REPORT = join(homedir(), '.claude', 'conductor-report.md');
 const today = () => {
     try { return JSON.parse(readFileSync(0, 'utf8')).ts || fallbackDate(); } catch { return fallbackDate(); }
@@ -77,12 +87,25 @@ for (const f of failures) {
         entries.set(f.id, { status: 'OPEN', text: prev.text.replace(/last-seen: \S+/, `last-seen: ${date}`) });
     } else {
         const first = prev?.text.match(/first-seen: (\S+)/)?.[1] || date;
-        entries.set(f.id, { status: 'OPEN', text: `${f.detail}\nfirst-seen: ${first} · last-seen: ${date}` });
+        let text = `${f.detail}\nfirst-seen: ${first} · last-seen: ${date}`;
+        if (ISSUE_REPO) {
+            const url = gh('issue', 'create', '--repo', ISSUE_REPO,
+                '--title', `[conductor-doctor] ${f.id} check failing`,
+                '--body', `Automated health-check failure.\n\n**Check:** ${f.id}\n**Detail:** ${f.detail}\n**First seen:** ${first}\n\nThis issue is managed by the conductor-doctor watcher: it will be closed automatically when the check passes again. The self-heal automation may comment with fix attempts.`);
+            const num = url?.match(/\/issues\/(\d+)/)?.[1];
+            if (num) text += `\nissue: #${num}`;
+        }
+        entries.set(f.id, { status: 'OPEN', text });
     }
     changed = true;
 }
 for (const [id, e] of entries) {
     if (e.status === 'OPEN' && !failedIds.has(id)) {
+        const num = e.text.match(/issue: #(\d+)/)?.[1];
+        if (num && ISSUE_REPO) {
+            gh('issue', 'close', num, '--repo', ISSUE_REPO,
+                '--comment', `Health check \`${id}\` passing again as of ${date} — closed automatically by conductor-doctor.`);
+        }
         entries.set(id, { status: 'RESOLVED', text: `${e.text}\nresolved: ${date}` });
         changed = true;
     }
