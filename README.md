@@ -19,22 +19,32 @@ Frontier-model budget discipline for Claude Code. Born from a simple observation
 
 - `session-recall` — on-demand episodic memory: an incremental SQLite FTS5 index over all past session transcripts (`search.py`, stdlib-only), searchable mid-task with ranked snippets and resume pointers. ~200 sessions index in seconds; auto-reindexes before each search.
 
+- `facts-recall` — semantic complement to session-recall: FTS5 over the distilled knowledge layer (auto-memory files, `~/.claude/rules`, plus knowledge-bundle dirs via `CONDUCTOR_KNOWLEDGE_DIRS` — colon-separated; only point it at dirs you're happy to index into a local plaintext DB). Chunked by heading, credential patterns redacted at index time.
+- `knowledge-sync` — distributed persistent memory: syncs the knowledge layer across machines via a private git remote (allowlisted paths only), with git's rebase/merge machinery as the conflict resolver.
 - `model-router` — data-driven tier selection: maintains `~/.claude/routing-journal.md` (one row per delegation outcome), routes new tasks by accumulated evidence instead of static defaults, and records outcomes after each run.
 - `persist-everywhere` — "add this to the brain / memory / claude.md / everywhere" writes a fact to every knowledge surface in one pass: one canonical copy, condensed pointers elsewhere, dedupe-first.
 - `slim-claude-md` — restructures an oversized CLAUDE.md into a lean pointer index + on-demand `rules/` detail files, keeping hard behavioral constraints inline so they can't be bypassed by lazy loading. Threshold-gated via the size-check hook, not a blanket rule.
 
 ## Install
 
+From the GitHub repo (works while the repo is private, as long as you have access — the CLI clones over SSH or your existing git credentials):
+
 ```bash
-# from a local clone
-/plugin marketplace add /path/to/claude-conductor
-/plugin install claude-conductor@claude-conductor-marketplace
+claude plugin marketplace add shubhamparashar/claude-conductor
+claude plugin install claude-conductor@claude-conductor-marketplace
 ```
 
-Or point the marketplace add at the git URL once published.
+Or the same via `/plugin marketplace add` + `/plugin install` inside a session. From a local clone, use `claude plugin marketplace add /path/to/claude-conductor`.
+
+**Auto-updates on a private repo:** background marketplace refresh runs without git credential helpers, so set `GITHUB_TOKEN` (or `GH_TOKEN`) in your environment to get silent updates; manual `claude plugin marketplace update` uses your normal git credentials either way.
+
+**Team lockdown (optional):** to pin an org to approved marketplaces only, deploy [docs/team-managed-settings.example.json](docs/team-managed-settings.example.json) as managed settings (`/Library/Application Support/ClaudeCode/managed-settings.json` on macOS) — `strictKnownMarketplaces` then rejects any other marketplace add.
+
+**If you previously installed the hooks/skills standalone** (copied into `~/.claude/hooks` + `~/.claude/skills` and wired in `settings.json`): remove those entries before enabling the plugin, or every hook fires twice per session.
 
 ## Design notes
 
 - The routing ladder was calibrated empirically: in a 102-agent research run, haiku handled 100% of search/fetch/extract cleanly, sonnet handled adversarial verification well — and sonnet failed cross-agent synthesis, which is why synthesis stays in the main loop.
 - The nudge is deliberately low-frequency and self-suppressing ("if nothing durable emerged, continue without comment") — a reminder cadence, not a chore.
 - `slim-claude-md` exists because CLAUDE.md grows monotonically; the two-layer split (binding one-liners inline, detail on demand) is the only version of lazy loading that doesn't break prohibition-style rules.
+- Hook stdout is deterministic by design: SessionStart context is byte-identical across sessions (no timestamps, counters, or randomness), so the conversation prefix stays prompt-cache-hot (cache reads bill at 0.1x input price). Dates and mutable state go to files (`conductor-report.md`), never into emitted context. Keep this invariant when adding hooks.

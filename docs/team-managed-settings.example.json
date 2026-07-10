@@ -1,0 +1,12 @@
+{
+  "strictKnownMarketplaces": [
+    {
+      "source": "github",
+      "repo": "shubhamparashar/claude-conductor"
+    },
+    {
+      "source": "github",
+      "repo": "anthropics/claude-plugins-official"
+    }
+  ]
+}

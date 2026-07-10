@@ -20,10 +20,21 @@ PROJECTS = HOME / '.claude' / 'projects'
 DB = HOME / '.claude' / 'session-index.db'
 MAX_MSG_CHARS = 2000
 SNIPPET_CHARS = 300
+# The index is a plaintext mirror of everything it reads; strip obvious
+# credentials so pasted-during-debugging secrets don't get a second home.
+SECRET_RE = re.compile(
+    r'(sk-ant-[\w-]{20,}|sk-[\w-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|xox[baprs]-[\w-]{10,}'
+    r'|AKIA[0-9A-Z]{16}|eyJ[\w-]{20,}\.[\w-]{20,}\.[\w-]{10,}'
+    r'|-----BEGIN [A-Z ]*PRIVATE KEY-----)')
+
+
+def redact(text):
+    return SECRET_RE.sub('[REDACTED]', text)
 
 
 def connect():
     db = sqlite3.connect(DB)
+    os.chmod(DB, 0o600)
     db.executescript(
         'CREATE TABLE IF NOT EXISTS files(path TEXT PRIMARY KEY, mtime REAL);'
         'CREATE VIRTUAL TABLE IF NOT EXISTS msgs USING fts5('
@@ -53,7 +64,7 @@ def extract_texts(path):
             text = '\n'.join(p for p in parts if p).strip()
             if not text or text.startswith('<system-reminder>'):
                 continue
-            yield e.get('type'), e.get('timestamp', ''), text[:MAX_MSG_CHARS]
+            yield e.get('type'), e.get('timestamp', ''), redact(text[:MAX_MSG_CHARS])
 
 
 def index(db, verbose=False):

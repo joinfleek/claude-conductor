@@ -8,7 +8,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 
 const ROOT = process.argv[2] || join(homedir(), '.claude');
 // Optional GitHub mirroring: when a repo is configured (argv[3] or env), each
@@ -31,7 +31,7 @@ const check = (id, fn, detail) => {
     try {
         if (!fn()) failures.push({ id, detail });
     } catch (e) {
-        failures.push({ id, detail: `${detail} (${e.message})` });
+        failures.push({ id, detail: `${detail} (${String(e.message).slice(0, 200)})` });
     }
 };
 
@@ -48,7 +48,7 @@ check('hooks-json', () => {
 
 // 2. every skill has a SKILL.md with frontmatter
 check('skills', () => {
-    for (const s of ['model-router', 'persist-everywhere', 'session-recall', 'slim-claude-md']) {
+    for (const s of ['model-router', 'persist-everywhere', 'session-recall', 'facts-recall', 'knowledge-sync', 'cost-stats', 'slim-claude-md']) {
         const p = join(ROOT, 'skills', s, 'SKILL.md');
         if (!existsSync(p)) return false;
         if (!readFileSync(p, 'utf8').startsWith('---')) return false;
@@ -65,7 +65,21 @@ check('session-index', () => {
     return buf === 'SQLite format 3';
 }, 'session-index.db exists but is empty or corrupted (delete it to force a rebuild)');
 
-// 4. node runtime sanity for the hook scripts
+// 4. no double registration: when running as an installed plugin, the same
+// hook scripts must not also be wired directly in settings.json (each hook
+// would fire twice per event)
+check('double-install', () => {
+    if (!process.env.CLAUDE_PLUGIN_ROOT) return true;
+    const settings = join(homedir(), '.claude', 'settings.json');
+    if (!existsSync(settings)) return true;
+    const cmds = Object.values(JSON.parse(readFileSync(settings, 'utf8')).hooks || {}).flat()
+        .flatMap(g => g.hooks || []).map(h => h.command || '');
+    const ours = ['model-routing-context.mjs', 'memory-nudge.mjs', 'claude-md-size-check.mjs', 'post-task-reflect.mjs', 'conductor-doctor.mjs', 'delegation-journal.mjs', 'worktree-cleanup.mjs'];
+    const pluginPrefix = resolve(process.env.CLAUDE_PLUGIN_ROOT) + sep;
+    return !cmds.some(c => ours.some(s => c.includes(s)) && !c.includes(pluginPrefix));
+}, 'conductor hooks are registered BOTH via the plugin and directly in ~/.claude/settings.json — they fire twice per event; remove the settings.json entries (plugin is canonical)');
+
+// 5. node runtime sanity for the hook scripts
 check('node-runtime', () => parseInt(process.versions.node, 10) >= 18,
     'node < 18 cannot run the conductor hooks');
 
