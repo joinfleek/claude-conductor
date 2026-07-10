@@ -22,6 +22,12 @@ HOME = Path.home()
 DB = HOME / '.claude' / 'facts-index.db'
 SNIPPET_CHARS = 400
 MAX_CHUNK_CHARS = 4000
+# The index is a plaintext mirror of everything it reads; strip obvious
+# credentials so a secret pasted into a note doesn't get a second home.
+SECRET_RE = re.compile(
+    r'(sk-ant-[\w-]{20,}|sk-[\w-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|xox[baprs]-[\w-]{10,}'
+    r'|AKIA[0-9A-Z]{16}|eyJ[\w-]{20,}\.[\w-]{20,}\.[\w-]{10,}'
+    r'|-----BEGIN [A-Z ]*PRIVATE KEY-----)')
 
 
 def roots():
@@ -67,7 +73,7 @@ def index(db, verbose=False):
             if seen.get(p) == mtime:
                 continue
             db.execute('DELETE FROM facts WHERE path = ?', (p,))
-            rows = [(p, h, t) for h, t in chunks(path) if t.strip()]
+            rows = [(p, h, SECRET_RE.sub('[REDACTED]', t)) for h, t in chunks(path) if t.strip()]
             db.executemany('INSERT INTO facts VALUES (?,?,?)', rows)
             db.execute('INSERT OR REPLACE INTO files VALUES (?,?)', (p, mtime))
             changed += 1
