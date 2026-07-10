@@ -48,7 +48,7 @@ check('hooks-json', () => {
 
 // 2. every skill has a SKILL.md with frontmatter
 check('skills', () => {
-    for (const s of ['model-router', 'persist-everywhere', 'session-recall', 'slim-claude-md']) {
+    for (const s of ['model-router', 'persist-everywhere', 'session-recall', 'facts-recall', 'slim-claude-md']) {
         const p = join(ROOT, 'skills', s, 'SKILL.md');
         if (!existsSync(p)) return false;
         if (!readFileSync(p, 'utf8').startsWith('---')) return false;
