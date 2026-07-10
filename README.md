@@ -36,6 +36,8 @@ Or the same via `/plugin marketplace add` + `/plugin install` inside a session. 
 
 **Auto-updates on a private repo:** background marketplace refresh runs without git credential helpers, so set `GITHUB_TOKEN` (or `GH_TOKEN`) in your environment to get silent updates; manual `claude plugin marketplace update` uses your normal git credentials either way.
 
+**Team lockdown (optional):** to pin an org to approved marketplaces only, deploy [docs/team-managed-settings.example.json](docs/team-managed-settings.example.json) as managed settings (`/Library/Application Support/ClaudeCode/managed-settings.json` on macOS) — `strictKnownMarketplaces` then rejects any other marketplace add.
+
 **If you previously installed the hooks/skills standalone** (copied into `~/.claude/hooks` + `~/.claude/skills` and wired in `settings.json`): remove those entries before enabling the plugin, or every hook fires twice per session.
 
 ## Design notes
