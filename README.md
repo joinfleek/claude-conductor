@@ -42,6 +42,16 @@ Or the same via `/plugin marketplace add` + `/plugin install` inside a session. 
 
 **If you previously installed the hooks/skills standalone** (copied into `~/.claude/hooks` + `~/.claude/skills` and wired in `settings.json`): remove those entries before enabling the plugin, or every hook fires twice per session.
 
+## Growth policy — grow without bloat
+
+Research-backed rules (lazy.nvim / Obsidian ecosystem practices, verified 2026-07) that govern what gets added here:
+
+- **One concern per file.** Every hook is a single `.mjs` in `hooks/`, every skill a single dir in `skills/`. To disable a component, delete its `hooks.json` entry (hooks) or its directory (skills) — no config flags, no feature matrix.
+- **Dormant until triggered.** Hooks must be silent and near-zero-cost on the happy path (the doctor only speaks on misbehavior; the size-check only above threshold). Skills are invocation-only. Nothing new may do unconditional per-session work.
+- **Overlap audit before each minor release.** If a proposed component duplicates part of an existing one, merge or drop it — duplication across modules is the primary bloat vector.
+- **Soft deprecation.** Components that fall out of use get flagged here as *deprecated* first and removed a version or two later; no hard deadlines, no breaking surprises.
+- **Automated release gate.** Run `scripts/release-check.sh` before tagging: syntax-checks every hook and skill script, validates all JSON manifests, verifies `hooks.json` references and skill frontmatter files exist, and scans tracked files for credentials.
+
 ## Design notes
 
 - The routing ladder was calibrated empirically: in a 102-agent research run, haiku handled 100% of search/fetch/extract cleanly, sonnet handled adversarial verification well — and sonnet failed cross-agent synthesis, which is why synthesis stays in the main loop.
