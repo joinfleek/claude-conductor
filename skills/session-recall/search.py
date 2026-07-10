@@ -34,6 +34,7 @@ def redact(text):
 
 def connect():
     db = sqlite3.connect(DB)
+    os.chmod(DB, 0o600)
     db.executescript(
         'CREATE TABLE IF NOT EXISTS files(path TEXT PRIMARY KEY, mtime REAL);'
         'CREATE VIRTUAL TABLE IF NOT EXISTS msgs USING fts5('

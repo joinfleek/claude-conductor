@@ -30,16 +30,25 @@ SECRET_RE = re.compile(
     r'|-----BEGIN [A-Z ]*PRIVATE KEY-----)')
 
 
+# never index credential directories, even if pointed at them
+BLOCKED_DIRS = {'.ssh', '.aws', '.gnupg', '.kube', '.docker', '.gcloud', '.config'}
+
+
+def blocked(path):
+    return any(part in BLOCKED_DIRS for part in path.parts)
+
+
 def roots():
     r = [HOME / '.claude' / 'rules', *(HOME / '.claude' / 'projects').glob('*/memory')]
     for d in os.environ.get('CONDUCTOR_KNOWLEDGE_DIRS', '').split(':'):
         if d.strip():
             r.append(Path(d.strip()).expanduser())
-    return [d for d in r if d.is_dir()]
+    return [d for d in r if d.is_dir() and not blocked(d.resolve())]
 
 
 def connect():
     db = sqlite3.connect(DB)
+    os.chmod(DB, 0o600)
     db.executescript(
         'CREATE TABLE IF NOT EXISTS files(path TEXT PRIMARY KEY, mtime REAL);'
         'CREATE VIRTUAL TABLE IF NOT EXISTS facts USING fts5(path, heading, text);'
@@ -68,6 +77,8 @@ def index(db, verbose=False):
     live, changed = set(), 0
     for root in roots():
         for path in root.rglob('*.md'):
+            if path.is_symlink() or blocked(path.resolve()):
+                continue
             p, mtime = str(path), path.stat().st_mtime
             live.add(p)
             if seen.get(p) == mtime:

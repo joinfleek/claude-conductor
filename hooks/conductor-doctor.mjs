@@ -8,7 +8,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 
 const ROOT = process.argv[2] || join(homedir(), '.claude');
 // Optional GitHub mirroring: when a repo is configured (argv[3] or env), each
@@ -31,7 +31,7 @@ const check = (id, fn, detail) => {
     try {
         if (!fn()) failures.push({ id, detail });
     } catch (e) {
-        failures.push({ id, detail: `${detail} (${e.message})` });
+        failures.push({ id, detail: `${detail} (${String(e.message).slice(0, 200)})` });
     }
 };
 
@@ -75,7 +75,8 @@ check('double-install', () => {
     const cmds = Object.values(JSON.parse(readFileSync(settings, 'utf8')).hooks || {}).flat()
         .flatMap(g => g.hooks || []).map(h => h.command || '');
     const ours = ['model-routing-context.mjs', 'memory-nudge.mjs', 'claude-md-size-check.mjs', 'post-task-reflect.mjs', 'conductor-doctor.mjs'];
-    return !cmds.some(c => ours.some(s => c.includes(s)) && !c.includes(process.env.CLAUDE_PLUGIN_ROOT));
+    const pluginPrefix = resolve(process.env.CLAUDE_PLUGIN_ROOT) + sep;
+    return !cmds.some(c => ours.some(s => c.includes(s)) && !c.includes(pluginPrefix));
 }, 'conductor hooks are registered BOTH via the plugin and directly in ~/.claude/settings.json — they fire twice per event; remove the settings.json entries (plugin is canonical)');
 
 // 5. node runtime sanity for the hook scripts
