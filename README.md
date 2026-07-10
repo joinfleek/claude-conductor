@@ -25,13 +25,18 @@ Frontier-model budget discipline for Claude Code. Born from a simple observation
 
 ## Install
 
+From the GitHub repo (works while the repo is private, as long as you have access — the CLI clones over SSH or your existing git credentials):
+
 ```bash
-# from a local clone
-/plugin marketplace add /path/to/claude-conductor
-/plugin install claude-conductor@claude-conductor-marketplace
+claude plugin marketplace add shubhamparashar/claude-conductor
+claude plugin install claude-conductor@claude-conductor-marketplace
 ```
 
-Or point the marketplace add at the git URL once published.
+Or the same via `/plugin marketplace add` + `/plugin install` inside a session. From a local clone, use `claude plugin marketplace add /path/to/claude-conductor`.
+
+**Auto-updates on a private repo:** background marketplace refresh runs without git credential helpers, so set `GITHUB_TOKEN` (or `GH_TOKEN`) in your environment to get silent updates; manual `claude plugin marketplace update` uses your normal git credentials either way.
+
+**If you previously installed the hooks/skills standalone** (copied into `~/.claude/hooks` + `~/.claude/skills` and wired in `settings.json`): remove those entries before enabling the plugin, or every hook fires twice per session.
 
 ## Design notes
 
