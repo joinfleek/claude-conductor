@@ -19,6 +19,8 @@ Frontier-model budget discipline for Claude Code. Born from a simple observation
 
 - `session-recall` — on-demand episodic memory: an incremental SQLite FTS5 index over all past session transcripts (`search.py`, stdlib-only), searchable mid-task with ranked snippets and resume pointers. ~200 sessions index in seconds; auto-reindexes before each search.
 
+- `facts-recall` — semantic complement to session-recall: FTS5 over the distilled knowledge layer (auto-memory files, `~/.claude/rules`, plus knowledge-bundle dirs via `CONDUCTOR_KNOWLEDGE_DIRS` — colon-separated; only point it at dirs you're happy to index into a local plaintext DB). Chunked by heading, credential patterns redacted at index time.
+- `knowledge-sync` — distributed persistent memory: syncs the knowledge layer across machines via a private git remote (allowlisted paths only), with git's rebase/merge machinery as the conflict resolver.
 - `model-router` — data-driven tier selection: maintains `~/.claude/routing-journal.md` (one row per delegation outcome), routes new tasks by accumulated evidence instead of static defaults, and records outcomes after each run.
 - `persist-everywhere` — "add this to the brain / memory / claude.md / everywhere" writes a fact to every knowledge surface in one pass: one canonical copy, condensed pointers elsewhere, dedupe-first.
 - `slim-claude-md` — restructures an oversized CLAUDE.md into a lean pointer index + on-demand `rules/` detail files, keeping hard behavioral constraints inline so they can't be bypassed by lazy loading. Threshold-gated via the size-check hook, not a blanket rule.
