@@ -74,7 +74,7 @@ check('double-install', () => {
     if (!existsSync(settings)) return true;
     const cmds = Object.values(JSON.parse(readFileSync(settings, 'utf8')).hooks || {}).flat()
         .flatMap(g => g.hooks || []).map(h => h.command || '');
-    const ours = ['model-routing-context.mjs', 'memory-nudge.mjs', 'claude-md-size-check.mjs', 'post-task-reflect.mjs', 'conductor-doctor.mjs', 'delegation-journal.mjs'];
+    const ours = ['model-routing-context.mjs', 'memory-nudge.mjs', 'claude-md-size-check.mjs', 'post-task-reflect.mjs', 'conductor-doctor.mjs', 'delegation-journal.mjs', 'worktree-cleanup.mjs'];
     const pluginPrefix = resolve(process.env.CLAUDE_PLUGIN_ROOT) + sep;
     return !cmds.some(c => ours.some(s => c.includes(s)) && !c.includes(pluginPrefix));
 }, 'conductor hooks are registered BOTH via the plugin and directly in ~/.claude/settings.json — they fire twice per event; remove the settings.json entries (plugin is canonical)');
