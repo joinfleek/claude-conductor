@@ -16,6 +16,11 @@ Take the fact/rule/preference from the conversation (the thing the user just sai
 
 ## Rules
 
+- **Verdict gate before any write** — run this checklist first and state the verdict in one line:
+  1. Grep existing coverage: the knowledge base, memory index + files, rules, and existing skills.
+  2. Decide scope: cross-project rule vs project-only vs domain.
+  3. Verdict: **Save** (new — write it) · **Improve** (existing entry stale/partial — update in place) · **Absorb** (belongs inside an existing rule/concept — merge, no new file) · **Drop** (already fully covered — write nothing, point to the existing coverage).
+  Only Save/Improve/Absorb proceed; Drop ends the skill.
 - **Dedupe before writing**: on every surface, search for existing coverage first; edit in place rather than appending a second copy.
 - **Condense per surface**: knowledge base gets the full reasoning; CLAUDE.md gets the actionable rule; memory gets fact + why + how-to-apply; project CLAUDE.md gets only the project-relevant slice.
 - **Cross-link**: each copy names where the canonical copy lives.
