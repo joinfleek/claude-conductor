@@ -58,6 +58,18 @@
                     }
                 ]
             }
+        ],
+        "PreToolUse": [
+            {
+                "matcher": "Edit|Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/context-pressure-warn.js",
+                        "timeout": 10
+                    }
+                ]
+            }
         ]
     }
 }
