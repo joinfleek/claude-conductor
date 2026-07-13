@@ -55,6 +55,11 @@
                         "type": "command",
                         "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/post-task-reflect.mjs",
                         "timeout": 10
+                    },
+                    {
+                        "type": "command",
+                        "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/goal-contract-gate.mjs",
+                        "timeout": 5
                     }
                 ]
             }
