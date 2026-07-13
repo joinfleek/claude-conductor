@@ -6,7 +6,7 @@
 // entry is written back to RESOLVED — entries are updated in place, never
 // duplicated. Plugin root comes from argv[2] (${CLAUDE_PLUGIN_ROOT}).
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 
@@ -82,6 +82,38 @@ check('double-install', () => {
 // 5. node runtime sanity for the hook scripts
 check('node-runtime', () => parseInt(process.versions.node, 10) >= 18,
     'node < 18 cannot run the conductor hooks');
+
+// 6. LaunchAgent automation jobs (skill-harvest, memory-consolidate, self-heal)
+// are logging cleanly: no command-not-found/missing-file/error lines in recent
+// logs, and no scheduled job has gone silent for 48h while still installed.
+check('automation-logs', () => {
+    const logDir = join(homedir(), '.claude', 'automation', 'logs');
+    if (!existsSync(logDir)) return true;
+    const files = readdirSync(logDir).filter(f => f.endsWith('.log'));
+    const badPattern = /command not found|no such file or directory|error:/i;
+    const jobs = {
+        'skill-harvest': 'com.shubham.skill-harvest.plist',
+        'memory-consolidate': 'com.shubham.memory-consolidate.plist',
+        'self-heal': 'com.shubham.conductor-self-heal.plist',
+    };
+    const agentsDir = join(homedir(), 'Library', 'LaunchAgents');
+    for (const [prefix, plist] of Object.entries(jobs)) {
+        if (!existsSync(join(agentsDir, plist))) continue;
+        const matches = files.filter(f => f.startsWith(`${prefix}-`));
+        if (matches.length === 0) continue;
+        // only the newest log per job counts: a failed run followed by a clean one is healthy
+        const newest = matches
+            .map(f => ({ f, m: statSync(join(logDir, f)).mtimeMs }))
+            .sort((a, b) => b.m - a.m)[0];
+        if (Date.now() - newest.m > 48 * 60 * 60 * 1000) return false;
+        // dated log files accumulate runs; only the last run block decides health
+        const content = readFileSync(join(logDir, newest.f), 'utf8');
+        const lastStart = content.lastIndexOf('started');
+        const lastRun = lastStart === -1 ? content : content.slice(lastStart);
+        if (badPattern.test(lastRun)) return false;
+    }
+    return true;
+}, 'an automation job log shows an error (command-not-found / missing file / "error:") or a scheduled job has gone silent for 48h+ — check ~/.claude/automation/logs/');
 
 // ── report write-back ──
 const date = today();
