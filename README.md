@@ -55,6 +55,8 @@ Research-backed rules (lazy.nvim / Obsidian ecosystem practices, verified 2026-0
 - **Soft deprecation.** Components that fall out of use get flagged here as *deprecated* first and removed a version or two later; no hard deadlines, no breaking surprises.
 - **Automated release gate.** Run `scripts/release-check.sh` before tagging: syntax-checks every hook and skill script, validates all JSON manifests, verifies `hooks.json` references and skill frontmatter files exist, and scans tracked files for credentials.
 
+Version history: [CHANGELOG.md](CHANGELOG.md).
+
 ## Design notes
 
 - The routing ladder was calibrated empirically: in a 102-agent research run, haiku handled 100% of search/fetch/extract cleanly, sonnet handled adversarial verification well — and sonnet failed cross-agent synthesis, which is why synthesis stays in the main loop.
