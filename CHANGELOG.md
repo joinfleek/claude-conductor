@@ -2,6 +2,12 @@
 
 All notable changes to claude-conductor. Newest first.
 
+## [0.6.2] — 2026-07-15
+
+- **metrics-share skill** — anonymous, consent-gated weekly sharing of delegation metrics (model × task-kind × tokens × outcome, no content/paths) as a `metrics`-labeled GitHub issue on the repo; opt-in via `~/.claude/conductor-metrics-optin`, revoke by deleting it.
+- **metrics-share-nudge hook** (SessionStart) — nudges once when the last share is >7 days old; silent unless opted in. Dormant-until-triggered per growth policy.
+- **delegation-journal hook** — pending rows now capture input tokens alongside output tokens, so shared metrics carry real cost signal.
+
 ## [0.6.1] — 2026-07-14
 
 - Public-readiness pass: doctor's automation-jobs map is now configurable (`CONDUCTOR_AUTOMATION_JOBS` env or `~/.claude/conductor-jobs.json`) with a generic log-scan fallback — no hardcoded personal LaunchAgent labels; skill doc examples genericized.

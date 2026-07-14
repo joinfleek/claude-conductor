@@ -27,18 +27,20 @@ try {
         let meta = {};
         try { meta = JSON.parse(readFileSync(join(dir, f), 'utf8')); } catch {}
         const jsonl = join(dir, f.replace('.meta.json', '.jsonl'));
-        let model = '?', outTokens = 0;
+        let model = '?', outTokens = 0, inTokens = 0;
         try {
             for (const line of readFileSync(jsonl, 'utf8').split('\n')) {
                 const mm = line.match(/"model":"([^"]+)"/);
                 if (mm) model = mm[1];
                 const um = line.match(/"output_tokens":(\d+)/);
                 if (um) outTokens += parseInt(um[1], 10);
+                const im = line.match(/"input_tokens":(\d+)/);
+                if (im) inTokens += parseInt(im[1], 10);
             }
         } catch {}
         const date = (input.ts || new Date().toISOString()).slice(0, 10);
         const desc = (meta.description || meta.agentType || 'subagent').replace(/\|/g, '/').slice(0, 80);
-        rows.push(`| ${date} | ${desc} | ${model} | 1 | PENDING (~${outTokens} out-tok) | auto-captured; judge & promote via model-router |`);
+        rows.push(`| ${date} | ${desc} | ${model} | 1 | PENDING (~${inTokens} in / ~${outTokens} out tok) | auto-captured; judge & promote via model-router |`);
     }
     if (rows.length) {
         if (!existsSync(PENDING)) {
