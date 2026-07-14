@@ -49,3 +49,7 @@ Location: `~/.claude/routing-journal.md` (create on first use). Format — one m
 ## After the run (the part everyone skips)
 
 Append one row per (task-kind, model) pair from the run, with honest outcomes. A journal that only records successes routes no better than the static ladder. Update rows are cheap; re-running a failed stage on a frontier model is not.
+
+## Patch proposals (GEPA-lite)
+
+The journal doesn't just route new work — it also feeds back into the skills it routed to. The nightly `skill-harvest.sh` job scans `~/.claude/routing-journal.md` for FAILED/degraded rows from the last 3 days that implicate an existing skill (task-kind or note names a skill in `~/.claude/skills/`). For each match it writes a patch proposal to `~/.claude/skills-drafts/patches/<skill-name>-<date>.md`: the failing journal row quoted verbatim, a root-cause hypothesis, and a concrete diff against the live `SKILL.md`. These are proposals only — the harvester never edits `~/.claude/skills/` directly. A human reviews and applies (or discards) each proposal. Most days produce zero; that's expected, not a bug.
