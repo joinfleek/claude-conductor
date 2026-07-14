@@ -11,7 +11,7 @@ Session-recall searches episodic memory (raw transcripts). This searches the sem
 
 ```bash
 python3 <skill-dir>/facts.py search "zone pricing currency" --k 8
-CONDUCTOR_KNOWLEDGE_DIRS=~/repo/shubham/context/okf python3 <skill-dir>/facts.py search "rollout state"
+CONDUCTOR_KNOWLEDGE_DIRS=~/repo/context/okf python3 <skill-dir>/facts.py search "rollout state"
 ```
 
 - Indexed by default: `~/.claude/rules/` and every `~/.claude/projects/*/memory/`.

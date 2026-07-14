@@ -2,6 +2,10 @@
 
 All notable changes to claude-conductor. Newest first.
 
+## [0.6.1] — 2026-07-14
+
+- Public-readiness pass: doctor's automation-jobs map is now configurable (`CONDUCTOR_AUTOMATION_JOBS` env or `~/.claude/conductor-jobs.json`) with a generic log-scan fallback — no hardcoded personal LaunchAgent labels; skill doc examples genericized.
+
 ## [0.6.0] — 2026-07-14
 
 - GEPA-lite patch proposals — the nightly harvest turns FAILED/degraded routing-journal rows that implicate an existing skill into human-reviewed patch proposals under `~/.claude/skills-drafts/patches/`; skills are never edited directly. Documented in the model-router skill.
