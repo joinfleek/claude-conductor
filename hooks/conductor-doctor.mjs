@@ -95,6 +95,7 @@ check('automation-logs', () => {
         'skill-harvest': 'com.shubham.skill-harvest.plist',
         'memory-consolidate': 'com.shubham.memory-consolidate.plist',
         'self-heal': 'com.shubham.conductor-self-heal.plist',
+        'dashboards-refresh': 'com.shubham.dashboards-refresh.plist',
     };
     const agentsDir = join(homedir(), 'Library', 'LaunchAgents');
     for (const [prefix, plist] of Object.entries(jobs)) {

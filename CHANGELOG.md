@@ -2,6 +2,12 @@
 
 All notable changes to claude-conductor. Newest first.
 
+## [0.6.0] — 2026-07-14
+
+- GEPA-lite patch proposals — the nightly harvest turns FAILED/degraded routing-journal rows that implicate an existing skill into human-reviewed patch proposals under `~/.claude/skills-drafts/patches/`; skills are never edited directly. Documented in the model-router skill.
+- `model-routing-context` — self-contained multi-file coding now defaults to sonnet delegation instead of the frontier main loop.
+- `automation-logs` doctor check — dashboards-refresh job added to the watched-jobs list.
+
 ## [0.5.0] — 2026-07-13
 
 - `automation-logs` doctor check — watches `~/.claude/automation/logs/`: flags an error in the newest log's last run block (per job) or a scheduled job silent for 48h+ while its LaunchAgent plist exists. Closes the blind spot where jobs failed silently for days.
