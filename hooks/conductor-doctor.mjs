@@ -83,30 +83,47 @@ check('double-install', () => {
 check('node-runtime', () => parseInt(process.versions.node, 10) >= 18,
     'node < 18 cannot run the conductor hooks');
 
-// 6. LaunchAgent automation jobs (skill-harvest, memory-consolidate, self-heal)
-// are logging cleanly: no command-not-found/missing-file/error lines in recent
-// logs, and no scheduled job has gone silent for 48h while still installed.
+// 6. LaunchAgent automation jobs are logging cleanly: no command-not-found/
+// missing-file/error lines in recent logs, and no scheduled job has gone
+// silent for 48h while still installed.
+//
+// The prefix->plist map is user-specific (LaunchAgent labels are namespaced
+// per machine), so it's supplied externally rather than hardcoded:
+//   - CONDUCTOR_AUTOMATION_JOBS="prefix=plist,prefix=plist" env var, or
+//   - ~/.claude/conductor-jobs.json ({"prefix": "plist", ...})
+// With neither configured, the plist-staleness check is skipped and this
+// falls back to scanning whatever *.log prefixes exist for the error pattern.
+const loadAutomationJobs = () => {
+    if (process.env.CONDUCTOR_AUTOMATION_JOBS) {
+        return Object.fromEntries(
+            process.env.CONDUCTOR_AUTOMATION_JOBS.split(',')
+                .map(pair => pair.split('=').map(s => s.trim()))
+                .filter(([prefix, plist]) => prefix && plist)
+        );
+    }
+    try {
+        return JSON.parse(readFileSync(join(homedir(), '.claude', 'conductor-jobs.json'), 'utf8'));
+    } catch { return null; }
+};
+
 check('automation-logs', () => {
     const logDir = join(homedir(), '.claude', 'automation', 'logs');
     if (!existsSync(logDir)) return true;
     const files = readdirSync(logDir).filter(f => f.endsWith('.log'));
     const badPattern = /command not found|no such file or directory|error:/i;
-    const jobs = {
-        'skill-harvest': 'com.shubham.skill-harvest.plist',
-        'memory-consolidate': 'com.shubham.memory-consolidate.plist',
-        'self-heal': 'com.shubham.conductor-self-heal.plist',
-        'dashboards-refresh': 'com.shubham.dashboards-refresh.plist',
-    };
+    const jobs = loadAutomationJobs();
     const agentsDir = join(homedir(), 'Library', 'LaunchAgents');
-    for (const [prefix, plist] of Object.entries(jobs)) {
-        if (!existsSync(join(agentsDir, plist))) continue;
+    const prefixes = jobs ? Object.keys(jobs) : [...new Set(files.map(f => f.replace(/-[^-]*\.log$/, '')))];
+    for (const prefix of prefixes) {
+        const plist = jobs?.[prefix];
+        if (plist && !existsSync(join(agentsDir, plist))) continue;
         const matches = files.filter(f => f.startsWith(`${prefix}-`));
         if (matches.length === 0) continue;
         // only the newest log per job counts: a failed run followed by a clean one is healthy
         const newest = matches
             .map(f => ({ f, m: statSync(join(logDir, f)).mtimeMs }))
             .sort((a, b) => b.m - a.m)[0];
-        if (Date.now() - newest.m > 48 * 60 * 60 * 1000) return false;
+        if (plist && Date.now() - newest.m > 48 * 60 * 60 * 1000) return false;
         // dated log files accumulate runs; only the last run block decides health
         const content = readFileSync(join(logDir, newest.f), 'utf8');
         const lastStart = content.lastIndexOf('started');

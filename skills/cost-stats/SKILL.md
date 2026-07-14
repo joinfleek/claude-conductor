@@ -12,7 +12,7 @@ Every transcript line carries a `usage` block; this sums them. The $ column is *
 ```bash
 python3 <skill-dir>/costs.py --days 7 --by model      # who burns what (default)
 python3 <skill-dir>/costs.py --days 30 --by project   # incl. scheduled-job projects
-python3 <skill-dir>/costs.py --days 7 --by day --project fleek-api
+python3 <skill-dir>/costs.py --days 7 --by day --project my-api
 ```
 
 - Covers main-session AND subagent transcripts (subagents often dominate).
