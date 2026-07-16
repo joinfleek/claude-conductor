@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // SubagentStop: append a PENDING row per completed subagent to
-// ~/.claude/routing-journal-pending.md — model, task description, token spend.
+// ~/.claude/routing-journal-pending.md - model, task description, token spend.
 // Rows carry no outcome judgment; the model-router skill promotes them into
 // ~/.claude/routing-journal.md with an honest outcome, or discards them.
 // Silent, best-effort: never blocks the session on any error.
-import { appendFileSync, existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -43,13 +43,21 @@ try {
         rows.push(`| ${date} | ${desc} | ${model} | 1 | PENDING (~${inTokens} in / ~${outTokens} out tok) | auto-captured; judge & promote via model-router |`);
     }
     if (rows.length) {
-        if (!existsSync(PENDING)) {
-            appendFileSync(PENDING,
-                '# Pending delegation rows (auto-captured by delegation-journal hook)\n' +
-                'Promote honest outcomes into routing-journal.md via the model-router skill, then delete the row.\n\n' +
-                '| date | task | model | n | outcome | note |\n|---|---|---|---|---|---|\n');
+        const header = '# Pending delegation rows (auto-captured by delegation-journal hook)\n' +
+            'Promote honest outcomes into routing-journal.md via the model-router skill, then delete the row.\n\n' +
+            '| date | task | model | n | outcome | note |\n|---|---|---|---|---|---|\n';
+        // Age cap: drop rows older than 14 days on every append so the pending
+        // file doesn't grow unbounded. Promotion logic is untouched - this only
+        // prunes rows nobody has triaged in two weeks.
+        const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        let keptRows = [];
+        if (existsSync(PENDING)) {
+            keptRows = readFileSync(PENDING, 'utf8').split('\n').filter((line) => {
+                const m = line.match(/^\|\s*(\d{4}-\d{2}-\d{2})\s*\|/);
+                return m && m[1] >= cutoff;
+            });
         }
-        appendFileSync(PENDING, rows.join('\n') + '\n');
+        writeFileSync(PENDING, header + [...keptRows, ...rows].join('\n') + '\n');
         writeFileSync(SEEN, [...seen].join('\n'));
     }
 } catch {}

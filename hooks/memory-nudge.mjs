@@ -22,7 +22,7 @@ n += 1;
 try { writeFileSync(counterFile, String(n)); } catch {}
 
 // Post-task reflection flag dropped by the Stop hook when the previous turn
-// used heavy tooling — fire once, immediately, independent of the cadence.
+// used heavy tooling - fire once, immediately, independent of the cadence.
 const reflectFlag = join(tmpdir(), `conductor-reflect-${sid}`);
 let toolCount = null;
 try { toolCount = readFileSync(reflectFlag, 'utf8').trim(); unlinkSync(reflectFlag); } catch {}
@@ -34,7 +34,7 @@ if (toolCount !== null) {
 }
 
 // Goal-contract flag dropped by the Stop hook (goal-contract-gate.mjs) when
-// an ACTIVE contract still has unchecked completion criteria — fire once.
+// an ACTIVE contract still has unchecked completion criteria - fire once.
 const contractFlag = join(tmpdir(), `conductor-goal-contract-${sid}`);
 let contractInfo = null;
 try { contractInfo = readFileSync(contractFlag, 'utf8').trim(); unlinkSync(contractFlag); } catch {}
@@ -47,9 +47,16 @@ if (contractInfo !== null) {
 }
 
 if (n % NUDGE_EVERY === 0) {
+    const knowledgeDirs = (process.env.CONDUCTOR_KNOWLEDGE_DIRS || '')
+        .split(':')
+        .map((p) => p.trim())
+        .filter(Boolean);
+    const destinations = knowledgeDirs.length
+        ? `memory directory, knowledge base, the appropriate CLAUDE.md, or the configured knowledge bundle(s) (${knowledgeDirs.join(', ')})`
+        : 'memory directory, knowledge base, or the appropriate CLAUDE.md';
     console.log(
-        '<system-reminder>Memory nudge: pause and check whether this session has produced durable knowledge not yet persisted — ' +
-        'a new fact, decision, fixed bug, or gotcha. If yes, write it to your persistent memory (memory directory, knowledge base, or the appropriate CLAUDE.md). ' +
+        '<system-reminder>Memory nudge: pause and check whether this session has produced durable knowledge not yet persisted - ' +
+        `a new fact, decision, fixed bug, or gotcha. If yes, write it to your persistent memory (${destinations}). ` +
         'If the task used 5+ tool calls and taught a reusable procedure, consider drafting it as a skill; if an existing skill proved wrong or stale, patch it. ' +
         'If nothing durable emerged, continue without comment.</system-reminder>'
     );

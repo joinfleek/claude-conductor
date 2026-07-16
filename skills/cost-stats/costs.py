@@ -3,7 +3,7 @@
 
 Aggregates per-message `usage` by model, project, and day; prices with the
 public API rates as an upper-bound equivalent (subscription usage doesn't
-bill per token — the $ column shows what the traffic would cost on the API,
+bill per token - the $ column shows what the traffic would cost on the API,
 which is the right number for routing decisions).
 
 Usage:
@@ -17,11 +17,13 @@ from pathlib import Path
 
 PROJECTS = Path.home() / '.claude' / 'projects'
 # $ per MTok: (input, output, cache_read, cache_write_5m)
+# Keep in sync with DEFAULT_PRICING in ~/repo/cc-orchestrator/lib/pricing.mjs - both
+# tables hardcode the same public API rates and drift silently if only one is updated.
 PRICES = {
     'haiku': (1.00, 5.00, 0.10, 1.25),
     'sonnet': (3.00, 15.00, 0.30, 3.75),
-    'opus': (15.00, 75.00, 1.50, 18.75),
-    'fable': (25.00, 125.00, 2.50, 31.25),
+    'opus': (5.00, 25.00, 0.50, 6.25),
+    'fable': (10.00, 50.00, 1.00, 12.50),
 }
 USAGE_RE = re.compile(r'"model":"([^"]+)".*?"usage":\{([^}]*)')
 FIELD_RE = re.compile(r'"(input_tokens|output_tokens|cache_read_input_tokens|cache_creation_input_tokens)":(\d+)')
