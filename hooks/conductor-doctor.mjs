@@ -130,6 +130,13 @@ check('automation-logs', () => {
         const content = readFileSync(join(logDir, newest.f), 'utf8');
         const lastStart = content.lastIndexOf('started');
         const lastRun = lastStart === -1 ? content : content.slice(lastStart);
+        // an explicit exit marker beats pattern-grep: job logs may QUOTE error
+        // strings while analyzing them (e.g. self-heal), which is not a failure
+        const exitMarker = lastRun.match(/\(exit (\d+)\)\s*=*\s*$/);
+        if (exitMarker) {
+            if (exitMarker[1] !== '0') return false;
+            continue;
+        }
         if (badPattern.test(lastRun)) return false;
     }
     return true;
