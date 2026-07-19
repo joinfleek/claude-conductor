@@ -3,7 +3,7 @@
 // persistent bug report at ~/.claude/conductor-report.md. Silent while
 // healthy. On a failing check it upserts an OPEN entry (keyed by check id)
 // and emits a reminder; when a previously-OPEN check passes again, the SAME
-// entry is written back to RESOLVED — entries are updated in place, never
+// entry is written back to RESOLVED - entries are updated in place, never
 // duplicated. Plugin root comes from argv[2] (${CLAUDE_PLUGIN_ROOT}).
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
@@ -13,7 +13,7 @@ import { join, resolve, sep } from 'node:path';
 const ROOT = process.argv[2] || join(homedir(), '.claude');
 // Optional GitHub mirroring: when a repo is configured (argv[3] or env), each
 // NEW failure opens one issue and recovery closes that SAME issue. Best-effort
-// only — any gh failure must never break the health check itself.
+// only - any gh failure must never break the health check itself.
 const ISSUE_REPO = process.argv[3] || process.env.CONDUCTOR_ISSUE_REPO || '';
 const gh = (...args) => {
     try {
@@ -77,7 +77,7 @@ check('double-install', () => {
     const ours = ['model-routing-context.mjs', 'memory-nudge.mjs', 'claude-md-size-check.mjs', 'post-task-reflect.mjs', 'conductor-doctor.mjs', 'delegation-journal.mjs', 'worktree-cleanup.mjs'];
     const pluginPrefix = resolve(process.env.CLAUDE_PLUGIN_ROOT) + sep;
     return !cmds.some(c => ours.some(s => c.includes(s)) && !c.includes(pluginPrefix));
-}, 'conductor hooks are registered BOTH via the plugin and directly in ~/.claude/settings.json — they fire twice per event; remove the settings.json entries (plugin is canonical)');
+}, 'conductor hooks are registered BOTH via the plugin and directly in ~/.claude/settings.json - they fire twice per event; remove the settings.json entries (plugin is canonical)');
 
 // 5. node runtime sanity for the hook scripts
 check('node-runtime', () => parseInt(process.versions.node, 10) >= 18,
@@ -115,7 +115,9 @@ check('automation-logs', () => {
     const agentsDir = join(homedir(), 'Library', 'LaunchAgents');
     const prefixes = jobs ? Object.keys(jobs) : [...new Set(files.map(f => f.replace(/-[^-]*\.log$/, '')))];
     for (const prefix of prefixes) {
-        const plist = jobs?.[prefix];
+        const jobConfig = jobs?.[prefix];
+        const plist = typeof jobConfig === 'object' ? jobConfig?.plist : jobConfig;
+        const staleHours = typeof jobConfig === 'object' ? (jobConfig?.staleHours ?? 48) : 48;
         if (plist && !existsSync(join(agentsDir, plist))) continue;
         const matches = files.filter(f => f.startsWith(`${prefix}-`));
         if (matches.length === 0) continue;
@@ -123,7 +125,7 @@ check('automation-logs', () => {
         const newest = matches
             .map(f => ({ f, m: statSync(join(logDir, f)).mtimeMs }))
             .sort((a, b) => b.m - a.m)[0];
-        if (plist && Date.now() - newest.m > 48 * 60 * 60 * 1000) return false;
+        if (plist && Date.now() - newest.m > staleHours * 60 * 60 * 1000) return false;
         // dated log files accumulate runs; only the last run block decides health
         const content = readFileSync(join(logDir, newest.f), 'utf8');
         const lastStart = content.lastIndexOf('started');
@@ -131,7 +133,7 @@ check('automation-logs', () => {
         if (badPattern.test(lastRun)) return false;
     }
     return true;
-}, 'an automation job log shows an error (command-not-found / missing file / "error:") or a scheduled job has gone silent for 48h+ — check ~/.claude/automation/logs/');
+}, 'an automation job log shows an error (command-not-found / missing file / "error:") or a scheduled job has gone silent for 48h+ - check ~/.claude/automation/logs/');
 
 // ── report write-back ──
 const date = today();
@@ -168,7 +170,7 @@ for (const [id, e] of entries) {
         const num = e.text.match(/issue: #(\d+)/)?.[1];
         if (num && ISSUE_REPO) {
             gh('issue', 'close', num, '--repo', ISSUE_REPO,
-                '--comment', `Health check \`${id}\` passing again as of ${date} — closed automatically by conductor-doctor.`);
+                '--comment', `Health check \`${id}\` passing again as of ${date} - closed automatically by conductor-doctor.`);
         }
         entries.set(id, { status: 'RESOLVED', text: `${e.text}\nresolved: ${date}` });
         changed = true;
@@ -185,6 +187,6 @@ if (failures.length > 0) {
     console.log(
         `<conductor-doctor>Conductor self-check FAILED: ${failures.map(f => f.id).join(', ')}. ` +
         `Details written to ${REPORT} (entries update in place; they flip to RESOLVED automatically once fixed). ` +
-        'Investigate when convenient — the rest of the plugin may be degraded until then.</conductor-doctor>'
+        'Investigate when convenient - the rest of the plugin may be degraded until then.</conductor-doctor>'
     );
 }
