@@ -1,8 +1,8 @@
 {
-    "name": "claude-conductor",
-    "description": "Frontier-model budget discipline for Claude Code: route delegable work to cheaper models (escalation ladder), nudge sessions to persist durable knowledge, broadcast facts to all knowledge surfaces at once, and keep CLAUDE.md lean via pointer indexes.",
-    "version": "0.6.2",
-    "author": {
-        "name": "Shubham Parashar"
-    }
+  "name": "claude-conductor",
+  "description": "Frontier-model budget discipline for Claude Code: route delegable work to cheaper models (escalation ladder), nudge sessions to persist durable knowledge, broadcast facts to all knowledge surfaces at once, and keep CLAUDE.md lean via pointer indexes.",
+  "version": "0.6.3",
+  "author": {
+    "name": "Shubham Parashar"
+  }
 }
