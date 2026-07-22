@@ -2,7 +2,7 @@
 
 All notable changes to claude-conductor. Newest first.
 
-## [Unreleased]
+## [0.6.5] - 2026-07-22
 
 - **skill-harvest example** (`examples/skill-harvest/`) - the nightly skill harvester referenced by the model-router GEPA-lite docs is now shipped: script + launchd plist template + install guide. Drafts skills from the last 24h of transcripts into `~/.claude/skills-drafts/` (human review only, nothing auto-activates) and turns FAILED/degraded routing-journal rows into patch proposals.
 
