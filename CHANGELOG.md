@@ -2,6 +2,10 @@
 
 All notable changes to claude-conductor. Newest first.
 
+## [Unreleased]
+
+- **skill-harvest example** (`examples/skill-harvest/`) - the nightly skill harvester referenced by the model-router GEPA-lite docs is now shipped: script + launchd plist template + install guide. Drafts skills from the last 24h of transcripts into `~/.claude/skills-drafts/` (human review only, nothing auto-activates) and turns FAILED/degraded routing-journal rows into patch proposals.
+
 ## [0.6.2] — 2026-07-15
 
 - **metrics-share skill** — anonymous, consent-gated weekly sharing of delegation metrics (model × task-kind × tokens × outcome, no content/paths) as a `metrics`-labeled GitHub issue on the repo; opt-in via `~/.claude/conductor-metrics-optin`, revoke by deleting it.

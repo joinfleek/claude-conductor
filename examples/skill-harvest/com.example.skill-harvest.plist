@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.example.skill-harvest</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__HOME__/.claude/automation/skill-harvest.sh</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>__NODE_BIN__:/usr/local/bin:/opt/homebrew/bin:/bin:/usr/bin</string>
+    </dict>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>9</integer>
+        <key>Minute</key>
+        <integer>45</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>__HOME__/.claude/automation/logs/launchd.skill-harvest.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>__HOME__/.claude/automation/logs/launchd.skill-harvest.err.log</string>
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>
