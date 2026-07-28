@@ -2,6 +2,13 @@
 
 All notable changes to claude-conductor. Newest first.
 
+## [0.7.0] - 2026-07-28
+
+Ported from Hermes Agent v0.18.0/v0.19.0 (the two self-improvement features the nightly harvest didn't cover):
+
+- **learn skill** (`/learn`) - on-demand skill distillation from the live session, a path, or a URL, written to `~/.claude/skills-drafts/` for review. Complements `examples/skill-harvest/`: the harvest re-reads yesterday's transcripts on a schedule, `learn` uses the context that is still in the window. Overlap check first: an existing skill covering the ground gets a patch proposal instead of a duplicate.
+- **journey skill** (`/journey`) - one recency timeline across every knowledge surface (auto-memory, `rules/`, `skills/`, `skills-drafts/` + `patches/`, `goal-contracts/`, plus `CONDUCTOR_KNOWLEDGE_DIRS`), with per-kind counts. Surfaces the draft-review backlog and stale entries that no single surface makes visible. Read-only; deletions and promotions need per-file confirmation.
+
 ## [0.6.5] - 2026-07-22
 
 - **skill-harvest example** (`examples/skill-harvest/`) - the nightly skill harvester referenced by the model-router GEPA-lite docs is now shipped: script + launchd plist template + install guide. Drafts skills from the last 24h of transcripts into `~/.claude/skills-drafts/` (human review only, nothing auto-activates) and turns FAILED/degraded routing-journal rows into patch proposals.
