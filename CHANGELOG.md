@@ -2,6 +2,13 @@
 
 All notable changes to claude-conductor. Newest first.
 
+## [0.7.1] - 2026-07-29
+
+Aligned with the principles of Claude Code's in-session `/doctor` (full-surface checkup, severity tiers, consent-gated fixes):
+
+- **doctor skill** (`/doctor` complement, invoked on demand) - full checkup of the conductor stack and surrounding setup: runs the scripted watcher checks plus judgment checks scripts can't do (context cost of unused skills/plugins, cross-surface duplication, stale plugin caches, malformed permission rules), reports findings by severity with evidence, applies fixes only after per-fix confirmation, and verifies each fix by re-running the check that flagged it. The SessionStart watcher stays the silent detector; this skill is the fixer.
+- **conductor-doctor hook: skill-shadow check** - flags a personal `~/.claude/skills/<name>` that duplicates a bundled plugin skill (both descriptions load every session, invocation becomes ambiguous) unless the personal copy declares its divergence ("diverges from the plugin copy") near the top - deliberate overlays stay allowed.
+
 ## [0.7.0] - 2026-07-28
 
 Ported from Hermes Agent v0.18.0/v0.19.0 (the two self-improvement features the nightly harvest didn't cover):
