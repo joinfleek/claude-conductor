@@ -2,6 +2,13 @@
 
 All notable changes to claude-conductor. Newest first.
 
+## [0.7.3] - 2026-07-29
+
+Doctor check-coverage fixes from the first cross-repo doctor sweep:
+
+- **skills check derives from the skills/ dir** - previously a hardcoded 7-name array covered 7/17 bundled skills; new skills are now checked automatically.
+- **skill-shadow also covers the current project's `.claude/skills`** - project-level copies of bundled skills need the same declared-divergence note as personal copies (found live: two undeclared project overlays).
+
 ## [0.7.2] - 2026-07-29
 
 Data-quality fixes for the delegation journal, found via the first 2026-W31 metrics payload (#11):
