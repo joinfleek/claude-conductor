@@ -79,11 +79,27 @@ check('double-install', () => {
     return !cmds.some(c => ours.some(s => c.includes(s)) && !c.includes(pluginPrefix));
 }, 'conductor hooks are registered BOTH via the plugin and directly in ~/.claude/settings.json - they fire twice per event; remove the settings.json entries (plugin is canonical)');
 
-// 5. node runtime sanity for the hook scripts
+// 5. skill shadowing: a personal ~/.claude/skills/<name> that duplicates a
+// bundled plugin skill loads BOTH descriptions into every session and makes
+// invocation ambiguous. A copy that declares its divergence (contains
+// "diverge" near the top) is treated as a deliberate overlay and allowed.
+check('skill-shadow', () => {
+    const personal = join(homedir(), '.claude', 'skills');
+    const bundled = join(ROOT, 'skills');
+    if (!existsSync(personal) || !existsSync(bundled)) return true;
+    for (const name of readdirSync(bundled)) {
+        const shadow = join(personal, name, 'SKILL.md');
+        if (!existsSync(shadow)) continue;
+        if (!/diverge/i.test(readFileSync(shadow, 'utf8').slice(0, 2000))) return false;
+    }
+    return true;
+}, 'a personal ~/.claude/skills copy shadows a bundled plugin skill without declaring divergence - both load every session; delete the personal copy or add a "diverges from the plugin copy" note to its SKILL.md');
+
+// 6. node runtime sanity for the hook scripts
 check('node-runtime', () => parseInt(process.versions.node, 10) >= 18,
     'node < 18 cannot run the conductor hooks');
 
-// 6. LaunchAgent automation jobs are logging cleanly: no command-not-found/
+// 7. LaunchAgent automation jobs are logging cleanly: no command-not-found/
 // missing-file/error lines in recent logs, and no scheduled job has gone
 // silent for 48h while still installed.
 //
