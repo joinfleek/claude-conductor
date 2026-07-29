@@ -34,13 +34,24 @@ try {
                 if (mm) model = mm[1];
                 const um = line.match(/"output_tokens":(\d+)/);
                 if (um) outTokens += parseInt(um[1], 10);
+                // true in-context input = fresh + cache-read + cache-creation;
+                // "input_tokens" alone is only the uncached marginal slice
                 const im = line.match(/"input_tokens":(\d+)/);
                 if (im) inTokens += parseInt(im[1], 10);
+                const cr = line.match(/"cache_read_input_tokens":(\d+)/);
+                if (cr) inTokens += parseInt(cr[1], 10);
+                const cc = line.match(/"cache_creation_input_tokens":(\d+)/);
+                if (cc) inTokens += parseInt(cc[1], 10);
             }
         } catch {}
         const date = (input.ts || new Date().toISOString()).slice(0, 10);
         const desc = (meta.description || meta.agentType || 'subagent').replace(/\|/g, '/').slice(0, 80);
-        rows.push(`| ${date} | ${desc} | ${model} | 1 | PENDING (~${inTokens} in / ~${outTokens} out tok) | auto-captured; judge & promote via model-router |`);
+        // no usage record at all = the agent never got a first API response;
+        // journal it as its own failure mode, not as a judgeable PENDING row
+        const outcome = model === '?' && inTokens + outTokens === 0
+            ? 'SPAWN-FAILED'
+            : `PENDING (~${inTokens} in / ~${outTokens} out tok)`;
+        rows.push(`| ${date} | ${desc} | ${model} | 1 | ${outcome} | auto-captured; judge & promote via model-router |`);
     }
     if (rows.length) {
         const header = '# Pending delegation rows (auto-captured by delegation-journal hook)\n' +

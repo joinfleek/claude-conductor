@@ -2,6 +2,13 @@
 
 All notable changes to claude-conductor. Newest first.
 
+## [0.7.2] - 2026-07-29
+
+Data-quality fixes for the delegation journal, found via the first 2026-W31 metrics payload (#11):
+
+- **in_tok now sums the full in-context input** (#12) - `input_tokens` + `cache_read_input_tokens` + `cache_creation_input_tokens`, matching how context-pressure-warn already measures context. Previously only the uncached marginal slice was captured, understating input by orders of magnitude.
+- **agents that never got a first API response journal as `SPAWN-FAILED`** (#13) - instead of a `? / 0 / 0` PENDING row, so spawn failures are a countable failure mode and don't dilute the judgeable pending set.
+
 ## [0.7.1] - 2026-07-29
 
 Aligned with the principles of Claude Code's in-session `/doctor` (full-surface checkup, severity tiers, consent-gated fixes):
