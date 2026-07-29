@@ -21,10 +21,10 @@ const gh = (...args) => {
     } catch { return null; }
 };
 const REPORT = join(homedir(), '.claude', 'conductor-report.md');
-const today = () => {
-    try { return JSON.parse(readFileSync(0, 'utf8')).ts || fallbackDate(); } catch { return fallbackDate(); }
-};
+let STDIN = {};
+try { STDIN = JSON.parse(readFileSync(0, 'utf8')); } catch {}
 const fallbackDate = () => new Date().toISOString().slice(0, 10);
+const today = () => STDIN.ts || fallbackDate();
 
 const failures = [];
 const check = (id, fn, detail) => {
@@ -46,10 +46,13 @@ check('hooks-json', () => {
     });
 }, 'hooks.json missing, unparseable, or references a missing script');
 
-// 2. every skill has a SKILL.md with frontmatter
+// 2. every skill has a SKILL.md with frontmatter (derived from the skills
+// dir, so new bundled skills are covered automatically)
 check('skills', () => {
-    for (const s of ['model-router', 'persist-everywhere', 'session-recall', 'facts-recall', 'knowledge-sync', 'cost-stats', 'slim-claude-md']) {
-        const p = join(ROOT, 'skills', s, 'SKILL.md');
+    const dir = join(ROOT, 'skills');
+    if (!existsSync(dir)) return false;
+    for (const s of readdirSync(dir)) {
+        const p = join(dir, s, 'SKILL.md');
         if (!existsSync(p)) return false;
         if (!readFileSync(p, 'utf8').startsWith('---')) return false;
     }
@@ -84,16 +87,20 @@ check('double-install', () => {
 // invocation ambiguous. A copy that declares its divergence (contains
 // "diverge" near the top) is treated as a deliberate overlay and allowed.
 check('skill-shadow', () => {
-    const personal = join(homedir(), '.claude', 'skills');
     const bundled = join(ROOT, 'skills');
-    if (!existsSync(personal) || !existsSync(bundled)) return true;
-    for (const name of readdirSync(bundled)) {
-        const shadow = join(personal, name, 'SKILL.md');
-        if (!existsSync(shadow)) continue;
-        if (!/diverge/i.test(readFileSync(shadow, 'utf8').slice(0, 2000))) return false;
+    if (!existsSync(bundled)) return true;
+    const overlays = [join(homedir(), '.claude', 'skills')];
+    if (STDIN.cwd) overlays.push(join(STDIN.cwd, '.claude', 'skills'));
+    for (const dir of overlays) {
+        if (!existsSync(dir)) continue;
+        for (const name of readdirSync(bundled)) {
+            const shadow = join(dir, name, 'SKILL.md');
+            if (!existsSync(shadow)) continue;
+            if (!/diverge/i.test(readFileSync(shadow, 'utf8').slice(0, 2000))) return false;
+        }
     }
     return true;
-}, 'a personal ~/.claude/skills copy shadows a bundled plugin skill without declaring divergence - both load every session; delete the personal copy or add a "diverges from the plugin copy" note to its SKILL.md');
+}, 'a personal (~/.claude/skills) or project (.claude/skills) copy shadows a bundled plugin skill without declaring divergence - both load every session; delete the copy or add a "diverges from the plugin copy" note to its SKILL.md');
 
 // 6. node runtime sanity for the hook scripts
 check('node-runtime', () => parseInt(process.versions.node, 10) >= 18,
