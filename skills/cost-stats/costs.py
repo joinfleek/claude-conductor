@@ -23,17 +23,32 @@ PRICES = {
     'haiku': (1.00, 5.00, 0.10, 1.25),
     'sonnet': (3.00, 15.00, 0.30, 3.75),
     'opus': (5.00, 25.00, 0.50, 6.25),
+    'opus-4-1': (15.00, 75.00, 1.50, 18.75),
     'fable': (10.00, 50.00, 1.00, 12.50),
+    'mythos': (10.00, 50.00, 1.00, 12.50),
 }
 USAGE_RE = re.compile(r'"model":"([^"]+)".*?"usage":\{([^}]*)')
 FIELD_RE = re.compile(r'"(input_tokens|output_tokens|cache_read_input_tokens|cache_creation_input_tokens)":(\d+)')
 TS_RE = re.compile(r'"timestamp":"(\d{4}-\d{2}-\d{2})')
 
 
+_WARNED_UNPRICED = set()
+
+
 def price(model, u):
-    tier = next((PRICES[k] for k in PRICES if k in model), None)
-    if not tier:
+    # Longest matching key wins, so a model-specific rate ('opus-4-1') beats the
+    # generic tier ('opus') regardless of declaration order.
+    key = max((k for k in PRICES if k in model), key=len, default=None)
+    if key is None:
+        # An unpriced model costs $0, which is indistinguishable from a free
+        # session - say so once rather than reporting a silently wrong total.
+        # '<synthetic>' and friends are harness placeholders for injected turns,
+        # not billable API calls, so $0 is correct and needs no warning.
+        if not model.startswith('<') and model not in _WARNED_UNPRICED:
+            _WARNED_UNPRICED.add(model)
+            print(f'warning: no price for {model}; its usage is counted as $0', file=sys.stderr)
         return 0.0
+    tier = PRICES[key]
     i, o, cr, cw = tier
     return (u.get('input_tokens', 0) * i + u.get('output_tokens', 0) * o
             + u.get('cache_read_input_tokens', 0) * cr
