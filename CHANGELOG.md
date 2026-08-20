@@ -2,6 +2,22 @@
 
 All notable changes to claude-conductor. Newest first.
 
+## [0.8.0] - 2026-08-20
+
+**Hone** — local harness-improver tooling (Fleek's AI-1, Tech Velocity Initiative Pillar 2). Turns developer friction inside a live session into a reviewed, attributed `claude-feedback-log` PR, with nothing about a developer's session ever aggregated or sent past their own already-authenticated `claude` account. Named Hone (not `AI-1` or `ai1-*`) to avoid prefix collisions on an org-wide install where the set of other installed plugins is unknown; `AI-1` remains the name of Fleek's initiative.
+
+- **Trigger Queue** (`engine/queue.mjs`, `engine/enqueue-trigger.mjs`) — a lightweight, one-file-per-marker local store. Every trigger (commit, PR, ERD sign-off, `/hone-checkpoint`) just appends a marker and exits; nothing reads a transcript synchronously.
+- **Local Assessment Engine** (`engine/assess.mjs`) — two tiers. Tier 1 is on-device heuristics (near-duplicate prompts, correction language, unreflected tool-call volume), always runs, zero cost. Tier 2 is a single `claude -p` call (developer's own auth, Haiku by default) on a redacted excerpt, only for what Tier 1 flags as a candidate.
+- **`hone-sweep-dispatch` hook** (UserPromptSubmit) — the "am I due?" check plus a detached-spawn dispatch, confirmed by direct test to survive after the spawning hook process exits (child reparents to init).
+- **`hone-checkpoint-safety-net` hook** (SessionStart, `clear`/`compact`) — catches sessions that compacted or cleared without an explicit checkpoint, before the transcript is orphaned past recovery.
+- **`hone-first-run-backfill` hook** (SessionStart, any source) — one-time-per-repo backfill: on first run in a repo, queues session transcripts from the last `HONE_BACKFILL_DAYS` days (default 14, capped at `HONE_BACKFILL_MAX_SESSIONS`, default 25) so installing Hone doesn't lose friction that happened before install day. Idempotent (a done-flag makes every subsequent SessionStart a single-file-check no-op); truncation is surfaced, never silent.
+- **Local Buffer + Digest/Batcher** (`engine/buffer.mjs`, `engine/digest.mjs`) — findings land in a gitignored, per-repo, per-developer buffer first; a content-threshold-plus-time-ceiling digest dedupes near-duplicates before ever presenting a batch.
+- **Proposal Writer** (`engine/proposal-writer.mjs`) — renders an approved batch into each target repo's *existing* `claude-feedback-log` format exactly (both the `fleek-monorepo` single-file and `fleek-api` one-file-per-entry shapes), one PR per batch, developer-attributed.
+- **`hone-checkpoint` / `hone-review` skills** — the developer-prompted trigger and the human-verification gate (nothing reaches a PR without explicit review here).
+- **Triggers 1–3 wired into real hook points** in both `fleek-api` and `fleek-monorepo` (Husky `pre-commit`/`pre-push`, and `fleek-api`'s `use-case-gate-hook.sh`), each tested against the real, unmodified hook logic in those repos. Trigger 2 (post-PR) runs fully local — a GitHub Actions workflow can't reach the local Trigger Queue at all, so it extends the same `pre-push` hook instead, deduped to fire once per PR via `gh pr view`.
+- **Fixed:** `fleek-api`'s `.claude/settings.json` pointed the `claude-conductor` marketplace at the upstream `shubhamparashar/claude-conductor` repo instead of this fork — every hook/skill in this plugin would silently never have reached that repo. Repointed to `joinfleek/claude-conductor`; the same marketplace block was added to `fleek-monorepo`'s `.claude/settings.json`, which had none.
+- **CODEOWNERS** entries added in both repos scoping `.claude/rules/` and `CLAUDE.md` to each repo's ERD-designated reviewer group, with every GitHub handle cross-checked against real commit history (GitHub's noreply-commit-email format) rather than guessed from a name.
+
 ## [0.7.3] - 2026-07-29
 
 Doctor check-coverage fixes from the first cross-repo doctor sweep:
