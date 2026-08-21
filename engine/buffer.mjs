@@ -7,6 +7,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { bufferDir } from './hone-paths.mjs';
+import { recordEvent } from './analytics.mjs';
 
 function ensureDir(dir) {
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
@@ -37,12 +38,17 @@ export function listBuffer(repoPath) {
     return findings;
 }
 
-export function removeFindings(repoPath, ids) {
+// outcome: 'approved' | 'rejected' | omitted (e.g. dropped as a duplicate) -
+// when given, records a local outcome event for the trend view
+// (engine/trends.mjs). This is the "did the developer act on it" signal -
+// stays on this machine, never aggregated across developers by this call.
+export function removeFindings(repoPath, ids, outcome = null) {
     const idSet = new Set(ids);
     for (const finding of listBuffer(repoPath)) {
         if (idSet.has(finding.id)) {
             try {
                 rmSync(finding._file, { force: true });
+                if (outcome) recordEvent(repoPath, { event: `finding-${outcome}`, findingId: finding.id });
             } catch {
                 // best-effort
             }

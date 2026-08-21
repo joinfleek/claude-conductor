@@ -19,10 +19,17 @@ import { invokeTier2 } from './tier2.mjs';
 
 // Preference order when Tier 1 fires multiple heuristics but only one anchor
 // escalates to Tier 2 in v1: explicit correction language is the strongest
-// direct signal, then repetition, then the coarser volume-without-reflection check.
-const ANCHOR_PRIORITY = ['B-correction-language', 'A-near-duplicate-prompt', 'C-unreflected-volume'];
+// direct signal; frontier-model-no-delegation is a distinct but precise
+// signal (a conjunction of two conditions, not a lone threshold), so it
+// ranks next; then repetition, then the coarser volume-without-reflection check.
+const ANCHOR_PRIORITY = [
+    'B-correction-language',
+    'D-frontier-no-delegation',
+    'A-near-duplicate-prompt',
+    'C-unreflected-volume',
+];
 
-function pickAnchor(anchors) {
+export function pickAnchor(anchors) {
     for (const heuristic of ANCHOR_PRIORITY) {
         const found = anchors.find((a) => a.heuristic === heuristic);
         if (found) return found;
@@ -42,8 +49,11 @@ function findingId(sessionId, heuristic, turnIndex) {
     return createHash('sha256').update(`${sessionId}:${heuristic}:${turnIndex}`).digest('hex').slice(0, 16);
 }
 
-// trigger: { type, repo, repoPath, ref?, timestamp }
-export function assess({ transcriptPath, sessionId, trigger }) {
+// trigger: { type, repo, repoPath, ref?, timestamp }. tier2Model/tier2Effort
+// override HONE_TIER2_MODEL/HONE_TIER2_EFFORT for this call only - lets a
+// comparison run exercise multiple configs in one process (see
+// engine/tier2-compare.mjs) without touching any other caller's default.
+export function assess({ transcriptPath, sessionId, trigger, tier2Model, tier2Effort }) {
     let turns;
     try {
         turns = parseTranscript(transcriptPath);
@@ -59,7 +69,10 @@ export function assess({ transcriptPath, sessionId, trigger }) {
     if (!anchor) return [];
 
     const excerpt = redact(excerptAround(turns, anchor.turnIndex, 3, 3000));
-    const tier2 = invokeTier2({ excerpt, heuristics: tier1.heuristicsFired, trigger });
+    const tier2Args = { excerpt, heuristics: tier1.heuristicsFired, anchorDetail: anchor.detail, trigger };
+    if (tier2Model) tier2Args.model = tier2Model;
+    if (tier2Effort) tier2Args.effort = tier2Effort;
+    const tier2 = invokeTier2(tier2Args);
     if (!tier2) return [];
 
     return [
@@ -71,6 +84,7 @@ export function assess({ transcriptPath, sessionId, trigger }) {
             ruleCandidate: tier2.ruleCandidate,
             confidence: tier2.confidence,
             tier: 2,
+            tier2Model: `${tier2.model}${tier2.effort !== 'default' ? ` (effort=${tier2.effort})` : ''}`,
             evidence: { transcriptPath, turnIndex: anchor.turnIndex, heuristics: tier1.heuristicsFired },
             developer: developerEmail(trigger.repoPath),
             repo: trigger.repo,

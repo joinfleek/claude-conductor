@@ -35,8 +35,12 @@ CLAUDE.md's architecture requires before anything leaves this machine.
    on whether a quick question or the `AskUserQuestion` tool fits better given how many findings
    there are.
 6. For findings the user does NOT approve: drop them from the buffer (they're discarded, not
-   resurfaced next time) via `removeFindings(repoPath, [ids])` from `engine/buffer.mjs`. Also
-   drop everything in `dropped` whose `duplicateOf` points at an unapproved finding.
+   resurfaced next time) via `removeFindings(repoPath, [ids], 'rejected')` from
+   `engine/buffer.mjs` - the third argument records a local, this-machine-only outcome event
+   (`engine/analytics.mjs`) so `node engine/trends.mjs --repo <path>` can show approve/reject rates
+   over time. Also drop
+   everything in `dropped` whose `duplicateOf` points at an unapproved finding, same call, same
+   `'rejected'` outcome.
 7. For the approved set (if any):
    ```bash
    node -e '
@@ -52,8 +56,8 @@ CLAUDE.md's architecture requires before anything leaves this machine.
    inlining large objects into the `-e` string). Confirm the exact repo (`fleek-api` vs
    `fleek-monorepo`) is one `engine/proposal-writer.mjs`'s `REPO_FORMATS` actually knows about
    before running this - it throws cleanly if not, but check first rather than relying on that.
-8. Remove the approved findings from the buffer (`removeFindings`) now that they're committed to
-   a PR, and report the PR URL back to the user.
+8. Remove the approved findings from the buffer via `removeFindings(repoPath, [ids], 'approved')`
+   now that they're committed to a PR, and report the PR URL back to the user.
 
 ## What NOT to do
 

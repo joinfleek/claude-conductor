@@ -192,6 +192,34 @@ components into `fleek-api`/`fleek-monorepo`. Build order:
 8. **Proposal Writer** — formats an approved batch into each repo's existing
    `claude-feedback-log` schema, one PR per batch, with developer attribution.
 
+## Build-phase update: Tier 2 model changed from Haiku to Sonnet (2026-08-21)
+
+Everywhere above still says "cheap model e.g. Haiku" for Tier 2 — that was the scoping-phase
+starting assumption, reasonably made before any real data existed. It's superseded, not
+retracted-as-wrong: build order and architecture are unchanged, only the model default is.
+
+**What changed and why.** Once real Tier 1 candidates existed to test against
+(`engine/tier2-compare.mjs`, built for exactly this), a 10-session comparison on
+`fleek-monorepo` real history showed Haiku flagging 9/10 sessions as findings, while Sonnet
+(effort=high) and Opus (effort=medium) both flagged only 2/10 — converging on the same clearest
+true positive (a secret typed into a transcript). This matches what this plugin's own routing
+ladder (`hooks/model-routing-context.mjs`) already says: "verification/judging" — which is what
+Tier 2 actually does, not extraction — belongs at Sonnet, not Haiku. Haiku's near-universal flag
+rate looked like too low a bar for something feeding a human review gate, not genuine
+thoroughness, and directly risks the review-gate volume problem already flagged as the biggest
+cross-cutting risk in the ERD (§9). Opus showed no quality edge over Sonnet in that comparison,
+so it isn't the default either — kept available via `tier2-compare.mjs`/env override, not chosen.
+
+**Resolved default:** `engine/tier2.mjs`'s `DEFAULT_MODEL`/`DEFAULT_EFFORT` are now `sonnet`/
+`high` (overridable per-call and via `HONE_TIER2_MODEL`/`HONE_TIER2_EFFORT`).
+
+**New rollout step, load-bearing, not optional:** before widening Hone to a new developer's
+machine as part of the pilot (and before any org-wide rollout), run
+`node engine/tier2-compare.mjs --repo <their-repo> --days 30` against THEIR own session
+history first. One developer's comparison data (mine) is not proof this generalizes across
+different prompting styles/session shapes — confirm the model choice holds, or gather evidence
+it doesn't, before trusting it broadly.
+
 ## Feeding decisions back
 
 This repo is where the technical work happens. Findings, design decisions, and working code

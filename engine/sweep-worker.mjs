@@ -13,6 +13,8 @@ import { appendFinding, listBuffer } from './buffer.mjs';
 import { isDue } from './digest.mjs';
 import { stateDir } from './hone-paths.mjs';
 import { mostRecentTranscript } from './resolve-transcript.mjs';
+import { logEvent } from './log.mjs';
+import { recordEvent } from './analytics.mjs';
 
 function ensureDir(dir) {
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
@@ -25,7 +27,11 @@ function main() {
         process.exit(1);
     }
 
+    let markersProcessed = 0;
+    let findingsCreated = 0;
+
     for (const marker of listPending(repoPath)) {
+        markersProcessed++;
         try {
             // Triggers 1-3 (post-commit, post-PR, post-ERD) fire outside a live
             // session and can't know which session did the work - resolve the
@@ -53,12 +59,35 @@ function main() {
                     timestamp: marker.timestamp,
                 },
             });
-            for (const finding of findings) appendFinding(repoPath, finding);
-        } catch {
-            // one bad marker must not wedge the rest of the drain
+            for (const finding of findings) {
+                appendFinding(repoPath, finding);
+                findingsCreated++;
+                recordEvent(repoPath, {
+                    event: 'finding-created',
+                    findingId: finding.id,
+                    heuristics: finding.evidence?.heuristics || [],
+                    confidence: finding.confidence,
+                    tier2Model: finding.tier2Model,
+                    triggerType: marker.triggerType,
+                });
+            }
+        } catch (err) {
+            // one bad marker must not wedge the rest of the drain - but log it,
+            // it's real signal (a genuinely broken marker, not a Tier 2 no-finding).
+            logEvent(repoPath, {
+                component: 'sweep-worker',
+                level: 'error',
+                message: `marker processing failed (trigger=${marker.triggerType})`,
+                sessionId: marker.sessionId,
+                detail: err?.message,
+            });
         } finally {
             removeMarker(marker);
         }
+    }
+
+    if (markersProcessed > 0) {
+        recordEvent(repoPath, { event: 'sweep-completed', markersProcessed, findingsCreated });
     }
 
     const buffered = listBuffer(repoPath);
@@ -66,6 +95,7 @@ function main() {
         const dir = stateDir(repoPath);
         ensureDir(dir);
         writeFileSync(join(dir, 'digest-ready.flag'), String(buffered.length));
+        logEvent(repoPath, { component: 'sweep-worker', level: 'info', message: `digest ready (${buffered.length} buffered)` });
     }
 }
 

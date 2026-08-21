@@ -10,3 +10,8 @@ export const honeRoot = (repoPath) => join(repoPath, HONE_ROOT);
 export const queueDir = (repoPath) => join(honeRoot(repoPath), 'queue');
 export const bufferDir = (repoPath) => join(honeRoot(repoPath), 'buffer');
 export const stateDir = (repoPath) => join(honeRoot(repoPath), 'state');
+// One-shot pilot-run / learning-summary reports - dated+timestamped files,
+// kept here so a developer has a running local record across multiple runs
+// instead of them scattering into whatever directory the CLI was invoked
+// from. Same gitignored root as everything else Hone writes.
+export const reportsDir = (repoPath) => join(honeRoot(repoPath), 'reports');

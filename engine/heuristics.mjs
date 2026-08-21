@@ -20,6 +20,19 @@ const CORRECTION_PATTERNS = [
 const SIMILARITY_THRESHOLD = 0.6;
 const TOOL_VOLUME_THRESHOLD = 15;
 
+// Mirrors this plugin's own documented routing ladder (see
+// hooks/model-routing-context.mjs / skills/model-router): haiku should
+// handle search/fetch/extraction/broad-exploration/mechanical work; frontier
+// tiers (opus, fable, or high/xhigh/max effort) keep orchestration and
+// delegate legwork out. A session running frontier-tier and doing this work
+// directly, with zero delegation anywhere, is exactly the ladder being
+// skipped - not a correctness bug, but a cost/speed one.
+const FRONTIER_MODEL_RE = /opus|fable/i;
+const FRONTIER_EFFORT_RE = /^(high|xhigh|max)$/i;
+const DELEGABLE_TOOLS = new Set(['Bash', 'Grep', 'Read', 'Glob', 'WebFetch', 'WebSearch']);
+const DELEGATION_TOOLS = new Set(['Agent', 'Task']);
+const FRONTIER_TOOLCALL_THRESHOLD = 10;
+
 export function runTier1(turns) {
     const anchors = [];
     const heuristicsFired = new Set();
@@ -64,6 +77,35 @@ export function runTier1(turns) {
             turnIndex: lastToolTurn ? lastToolTurn.index : turns.length - 1,
             heuristic: 'C-unreflected-volume',
             detail: `toolUseCount=${toolUseCount}`,
+        });
+    }
+
+    // D - frontier-tier model/effort doing delegable legwork directly, with
+    // zero delegation (Agent/Task) anywhere in the session.
+    let frontierToolCalls = 0;
+    let frontierAnchorTurn = null;
+    let frontierLabel = '';
+    let delegationUsed = false;
+    for (const t of turns) {
+        if (t.role !== 'assistant') continue;
+        if (t.toolUses.some((u) => DELEGATION_TOOLS.has(u.name))) delegationUsed = true;
+
+        const isFrontier = FRONTIER_MODEL_RE.test(t.model) || FRONTIER_EFFORT_RE.test(t.effort);
+        if (!isFrontier) continue;
+
+        const delegableCalls = t.toolUses.filter((u) => DELEGABLE_TOOLS.has(u.name));
+        if (delegableCalls.length) {
+            frontierToolCalls += delegableCalls.length;
+            frontierAnchorTurn = t;
+            frontierLabel = `${t.model || 'unknown-model'}${t.effort ? ` (effort=${t.effort})` : ''}`;
+        }
+    }
+    if (frontierToolCalls > FRONTIER_TOOLCALL_THRESHOLD && !delegationUsed) {
+        heuristicsFired.add('D-frontier-no-delegation');
+        anchors.push({
+            turnIndex: frontierAnchorTurn ? frontierAnchorTurn.index : turns.length - 1,
+            heuristic: 'D-frontier-no-delegation',
+            detail: `${frontierLabel} made ${frontierToolCalls} direct Bash/Grep/Read/Glob/WebFetch/WebSearch calls itself; no Agent/Task delegation anywhere in the session`,
         });
     }
 

@@ -26,6 +26,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { enqueueTrigger } from './queue.mjs';
 import { stateDir } from './hone-paths.mjs';
+import { logEvent } from './log.mjs';
 
 const MAX_TRACKED_KEYS = 500;
 
@@ -66,10 +67,12 @@ function parseArgs(argv) {
 }
 
 function main() {
+    let repoPathForLogging = null;
     try {
         const args = parseArgs(process.argv.slice(2));
         const repoPath = args['repo-path'];
         const triggerType = args['trigger-type'];
+        repoPathForLogging = repoPath || null;
         if (!repoPath || !triggerType) process.exit(0); // malformed call - fail silent, not silent-crash
 
         const dedupeKey = args['dedupe-key'];
@@ -85,8 +88,12 @@ function main() {
             timestamp: new Date().toISOString(),
         });
         if (dedupeKey) recordSeen(repoPath, dedupeKey);
-    } catch {
-        // a broken Trigger Queue write must never fail the calling git hook
+        logEvent(repoPath, { component: 'enqueue-trigger', level: 'info', message: `enqueued (trigger=${triggerType})` });
+    } catch (err) {
+        // a broken Trigger Queue write must never fail the calling git hook - but log it
+        if (repoPathForLogging) {
+            logEvent(repoPathForLogging, { component: 'enqueue-trigger', level: 'error', message: 'enqueue failed', detail: err?.message });
+        }
     }
     process.exit(0);
 }

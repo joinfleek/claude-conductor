@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { listPending } from '../engine/queue.mjs';
 import { stateDir } from '../engine/hone-paths.mjs';
+import { logEvent } from '../engine/log.mjs';
 
 const MIN_DISPATCH_INTERVAL_MS = parseInt(process.env.HONE_MIN_DISPATCH_INTERVAL_MS || String(5 * 60 * 1000), 10);
 const NUDGE_COOLDOWN_MS = parseInt(process.env.HONE_NUDGE_COOLDOWN_MS || String(30 * 60 * 1000), 10);
@@ -62,6 +63,7 @@ function maybeDispatchSweep(repoPath, repoName) {
         cwd: repoPath,
     });
     child.unref();
+    logEvent(repoPath, { component: 'sweep-dispatch', level: 'info', message: `sweep dispatched (${pending.length} pending marker(s))` });
 }
 
 function maybeNudgeDigestReady(repoPath) {
@@ -92,12 +94,15 @@ function main() {
 
     try {
         maybeDispatchSweep(repoPath, repoName);
-    } catch {
-        // never block the prompt on sweep-dispatch failure
+    } catch (err) {
+        // never block the prompt on sweep-dispatch failure - but log it
+        logEvent(repoPath, { component: 'sweep-dispatch', level: 'error', message: 'dispatch failed', detail: err?.message });
     }
     try {
         maybeNudgeDigestReady(repoPath);
-    } catch {}
+    } catch (err) {
+        logEvent(repoPath, { component: 'sweep-dispatch', level: 'error', message: 'digest-ready nudge failed', detail: err?.message });
+    }
 
     process.exit(0);
 }

@@ -14,6 +14,7 @@ import { basename, join } from 'node:path';
 import { enqueueTrigger } from '../engine/queue.mjs';
 import { stateDir } from '../engine/hone-paths.mjs';
 import { listTranscripts } from '../engine/resolve-transcript.mjs';
+import { logEvent } from '../engine/log.mjs';
 
 const MAX_TRACKED_SESSIONS = 200;
 
@@ -67,7 +68,10 @@ function main() {
             timestamp: new Date().toISOString(),
         });
         recordSweptSession(cwd, orphaned.id);
-    } catch {}
+        logEvent(cwd, { component: 'checkpoint-safety-net', level: 'info', message: `queued orphaned session (source=${source})`, sessionId: orphaned.id });
+    } catch (err) {
+        logEvent(cwd, { component: 'checkpoint-safety-net', level: 'error', message: 'enqueue failed', sessionId: orphaned.id, detail: err?.message });
+    }
 
     process.exit(0);
 }

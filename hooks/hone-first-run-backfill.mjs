@@ -9,6 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { runFirstRunBackfill, backfillAlreadyRan } from '../engine/backfill.mjs';
+import { logEvent } from '../engine/log.mjs';
 
 function main() {
     let input;
@@ -24,6 +25,13 @@ function main() {
         if (backfillAlreadyRan(cwd)) process.exit(0); // fast path - every SessionStart after the first
 
         const summary = runFirstRunBackfill(cwd, basename(cwd), { excludeSessionId: input.session_id });
+        if (summary) {
+            logEvent(cwd, {
+                component: 'first-run-backfill',
+                level: 'info',
+                message: `backfill ran: found=${summary.foundInWindow}, enqueued=${summary.enqueued}, truncated=${summary.truncated}`,
+            });
+        }
         if (summary && summary.enqueued > 0) {
             const capNote = summary.truncated
                 ? ` (capped at ${summary.enqueued} of ${summary.foundInWindow} found)`
@@ -35,8 +43,9 @@ function main() {
                     `in /hone-review.</system-reminder>`,
             );
         }
-    } catch {
-        // never block session startup on a backfill failure
+    } catch (err) {
+        // never block session startup on a backfill failure - but log it
+        logEvent(cwd, { component: 'first-run-backfill', level: 'error', message: 'backfill failed', detail: err?.message });
     }
     process.exit(0);
 }

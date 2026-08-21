@@ -64,6 +64,11 @@ export function parseTranscript(transcriptPath) {
             isHumanPrompt,
             isToolResultOnly,
             toolUses,
+            // Only meaningful on assistant turns - which model/effort actually
+            // ran this turn, straight from the record (rec.effort is a
+            // top-level field alongside rec.message on assistant records).
+            model: rec.type === 'assistant' ? msg.model || '' : '',
+            effort: rec.type === 'assistant' ? rec.effort || '' : '',
         });
     }
     return turns;
