@@ -23,10 +23,11 @@
 // Never throws, never prints on success, always exits 0 - a trigger-queue
 // write must not be able to fail a commit or push.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { enqueueTrigger } from './queue.mjs';
 import { stateDir } from './hone-paths.mjs';
 import { logEvent } from './log.mjs';
+import { resolveRepoName } from './repo-identity.mjs';
 
 const MAX_TRACKED_KEYS = 500;
 
@@ -82,7 +83,7 @@ function main() {
             sessionId: args['session-id'] || null,
             transcriptPath: args['transcript-path'] || null,
             triggerType,
-            repo: basename(repoPath),
+            repo: resolveRepoName(repoPath),
             repoPath,
             ref: args.ref || null,
             timestamp: new Date().toISOString(),

@@ -7,8 +7,8 @@
 // this stays cheap and silent on every subsequent SessionStart, same
 // philosophy as every other hook in this plugin.
 import { readFileSync } from 'node:fs';
-import { basename } from 'node:path';
 import { runFirstRunBackfill, backfillAlreadyRan } from '../engine/backfill.mjs';
+import { resolveRepoName } from '../engine/repo-identity.mjs';
 import { logEvent } from '../engine/log.mjs';
 
 function main() {
@@ -24,7 +24,7 @@ function main() {
     try {
         if (backfillAlreadyRan(cwd)) process.exit(0); // fast path - every SessionStart after the first
 
-        const summary = runFirstRunBackfill(cwd, basename(cwd), { excludeSessionId: input.session_id });
+        const summary = runFirstRunBackfill(cwd, resolveRepoName(cwd), { excludeSessionId: input.session_id });
         if (summary) {
             logEvent(cwd, {
                 component: 'first-run-backfill',

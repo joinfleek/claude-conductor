@@ -25,7 +25,7 @@
 // only the pilot report's own path for a one-off custom location; the
 // learning summary always lands in the reports dir.
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { listTranscripts } from './resolve-transcript.mjs';
 import { parseTranscript, excerptAround } from './transcript.mjs';
 import { runTier1 } from './heuristics.mjs';
@@ -35,6 +35,7 @@ import { appendFinding } from './buffer.mjs';
 import { buildLearningSummary } from './learning-summary.mjs';
 import { reportsDir } from './hone-paths.mjs';
 import { recordEvent } from './analytics.mjs';
+import { resolveRepoName } from './repo-identity.mjs';
 
 // Filesystem-safe timestamp shared by both output files from one run, so a
 // pilot report and its paired learning summary are obviously the same run
@@ -64,7 +65,7 @@ function main() {
         );
         process.exit(1);
     }
-    const repo = basename(repoPath);
+    const repo = resolveRepoName(repoPath);
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
     const transcripts = listTranscripts(repoPath).filter((t) => t.mtime >= cutoff);
 

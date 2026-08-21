@@ -14,6 +14,11 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 
+// Keyed by CANONICAL repo name (from the git remote via
+// engine/repo-identity.mjs), never by the local clone directory name - a
+// developer whose fleek-monorepo checkout lives at `.../fleek/fe-apps`
+// would otherwise hit "No format registered for repo fe-apps" the moment
+// they approved a finding. Found for real during the 2026-08-21 pilot.
 export const REPO_FORMATS = {
     'fleek-monorepo': { style: 'single-file', file: 'docs/claude-feedback-log.md', marker: '<!-- entries-start -->' },
     'fleek-api': { style: 'one-file-per-entry', dir: 'docs/claude-feedback-log' },

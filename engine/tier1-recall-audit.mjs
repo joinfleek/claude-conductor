@@ -17,7 +17,7 @@
 // phrases it extracts should feed back into heuristics.mjs's fixed pattern
 // lists as an evidence-driven update, not a guess.
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { listTranscripts } from './resolve-transcript.mjs';
 import { parseTranscript } from './transcript.mjs';
@@ -30,6 +30,7 @@ import {
 } from './heuristics.mjs';
 import { redact } from './redact.mjs';
 import { reportsDir } from './hone-paths.mjs';
+import { resolveRepoName } from './repo-identity.mjs';
 
 const AUDIT_MODEL = process.env.HONE_AUDIT_MODEL || 'sonnet';
 const AUDIT_EFFORT = process.env.HONE_AUDIT_EFFORT || 'high';
@@ -110,7 +111,7 @@ function main() {
         console.error('Usage: node engine/tier1-recall-audit.mjs --repo <path> [--days 30]');
         process.exit(1);
     }
-    const repo = basename(repoPath);
+    const repo = resolveRepoName(repoPath);
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
     const transcripts = listTranscripts(repoPath).filter((t) => t.mtime >= cutoff);
 

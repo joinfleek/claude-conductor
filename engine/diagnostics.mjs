@@ -8,11 +8,12 @@
 //
 // Usage: node engine/diagnostics.mjs --repo <path> [--out <file>]
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { listPending } from './queue.mjs';
 import { listBuffer } from './buffer.mjs';
 import { logFile } from './log.mjs';
 import { stateDir, reportsDir } from './hone-paths.mjs';
+import { resolveRepoName } from './repo-identity.mjs';
 
 function readIfExists(file) {
     try {
@@ -37,7 +38,7 @@ function main() {
         console.error('Usage: node engine/diagnostics.mjs --repo <path> [--out <file>]');
         process.exit(1);
     }
-    const repo = basename(repoPath);
+    const repo = resolveRepoName(repoPath);
     const pending = listPending(repoPath);
     const buffered = listBuffer(repoPath);
 

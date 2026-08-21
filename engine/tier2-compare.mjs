@@ -14,7 +14,7 @@
 // renders a side-by-side markdown so the actual outputs can be read, not
 // just their confidence labels.
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { listTranscripts } from './resolve-transcript.mjs';
 import { parseTranscript, excerptAround } from './transcript.mjs';
 import { runTier1 } from './heuristics.mjs';
@@ -22,6 +22,7 @@ import { redact } from './redact.mjs';
 import { invokeTier2 } from './tier2.mjs';
 import { pickAnchor } from './assess.mjs';
 import { reportsDir } from './hone-paths.mjs';
+import { resolveRepoName } from './repo-identity.mjs';
 
 const CONFIGS = [
     { label: 'haiku', model: 'haiku', effort: '' },
@@ -56,7 +57,7 @@ function main() {
         console.error('Usage: node engine/tier2-compare.mjs --repo <path> [--days 30]');
         process.exit(1);
     }
-    const repo = basename(repoPath);
+    const repo = resolveRepoName(repoPath);
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
     const transcripts = listTranscripts(repoPath).filter((t) => t.mtime >= cutoff);
 

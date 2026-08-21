@@ -10,11 +10,12 @@
 // just-orphaned transcript in this project's session directory and enqueue a
 // marker before Claude Code's retention cleanup (default 30 days) deletes it.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { enqueueTrigger } from '../engine/queue.mjs';
 import { stateDir } from '../engine/hone-paths.mjs';
 import { listTranscripts } from '../engine/resolve-transcript.mjs';
 import { logEvent } from '../engine/log.mjs';
+import { resolveRepoName } from '../engine/repo-identity.mjs';
 
 const MAX_TRACKED_SESSIONS = 200;
 
@@ -63,7 +64,7 @@ function main() {
             sessionId: orphaned.id,
             transcriptPath: orphaned.file,
             triggerType: 'session-start-safety-net',
-            repo: basename(cwd),
+            repo: resolveRepoName(cwd),
             repoPath: cwd,
             timestamp: new Date().toISOString(),
         });

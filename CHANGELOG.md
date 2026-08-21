@@ -2,6 +2,10 @@
 
 All notable changes to claude-conductor. Newest first.
 
+## [0.8.2] - 2026-08-21
+
+- **Fixed: repo identity now comes from the git remote, not the directory name** (`engine/repo-identity.mjs`). Every call site previously used `basename(repoPath)`, which silently breaks for any developer whose local clone directory isn't named after the repo. Found for real in the first external pilot run: a developer's `fleek-monorepo` clone lives at `.../fleek/fe-apps`, so `basename` produced `"fe-apps"` — not a key in `proposal-writer.mjs`'s `REPO_FORMATS`. The comparison/pilot tooling still worked (it only uses the name as a label), but `/hone-review` would have thrown `No claude-feedback-log format registered for repo "fe-apps"` the instant they approved a finding — i.e. the bug was invisible right up until the one step that matters. `resolveRepoName()` parses the `origin` remote (https, git@, and ssh:// URL shapes all handled) and falls back to the directory basename only when there's no usable remote. Applied across all 9 call sites in `engine/` and `hooks/`.
+
 ## [0.8.1] - 2026-08-21
 
 - **Tier 1 heuristic D — frontier-model-no-delegation** (`engine/heuristics.mjs`) — flags a session where a frontier-tier model or high/xhigh/max effort made 10+ direct search/fetch/exploration tool calls (Bash, Grep, Read, Glob, WebFetch, WebSearch) with zero delegation (Agent/Task) anywhere in the session. Feeds routing/efficiency rule candidates into the same finding pipeline as correctness findings — matches this plugin's own documented routing ladder (`hooks/model-routing-context.mjs`, `skills/model-router`) against real session behavior instead of leaving it as policy nobody checks. Tier 2's prompt updated to recognize this as a distinct category (judged by whether the delegated-out work fit a cheaper tier, not by task success) and now receives the flagging heuristic's concrete detail string, not just its name.

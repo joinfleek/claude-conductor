@@ -8,9 +8,10 @@
 //
 // Usage: node engine/trends.mjs --repo <path> [--days 30]
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { outcomesFile } from './analytics.mjs';
 import { reportsDir } from './hone-paths.mjs';
+import { resolveRepoName } from './repo-identity.mjs';
 
 function parseArgs(argv) {
     const out = { days: 30 };
@@ -47,7 +48,7 @@ function main() {
         console.error('Usage: node engine/trends.mjs --repo <path> [--days 30]');
         process.exit(1);
     }
-    const repo = basename(repoPath);
+    const repo = resolveRepoName(repoPath);
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
     const events = readEvents(repoPath, cutoff);
 

@@ -8,12 +8,13 @@
 // this hook's (see engine/sweep-worker.mjs). Always exits 0, never blocks,
 // same silent-fail convention as context-pressure-warn.js.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename, dirname, join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { listPending } from '../engine/queue.mjs';
 import { stateDir } from '../engine/hone-paths.mjs';
 import { logEvent } from '../engine/log.mjs';
+import { resolveRepoName } from '../engine/repo-identity.mjs';
 
 const MIN_DISPATCH_INTERVAL_MS = parseInt(process.env.HONE_MIN_DISPATCH_INTERVAL_MS || String(5 * 60 * 1000), 10);
 const NUDGE_COOLDOWN_MS = parseInt(process.env.HONE_NUDGE_COOLDOWN_MS || String(30 * 60 * 1000), 10);
@@ -90,7 +91,7 @@ function main() {
     if (!payload) process.exit(0);
     const repoPath = payload.cwd;
     if (!repoPath) process.exit(0);
-    const repoName = basename(repoPath);
+    const repoName = resolveRepoName(repoPath);
 
     try {
         maybeDispatchSweep(repoPath, repoName);
