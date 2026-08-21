@@ -220,6 +220,35 @@ history first. One developer's comparison data (mine) is not proof this generali
 different prompting styles/session shapes — confirm the model choice holds, or gather evidence
 it doesn't, before trusting it broadly.
 
+## Build-phase addition: Tier 1 recall audit (2026-08-21, same day)
+
+A real, direct concern raised the same day as the model-comparison work above: `tier2-compare.mjs`
+only ever checks sessions Tier 1 already flagged — it validates Tier 2's *precision*, not Tier
+1's *recall*. Tier 1's fixed heuristics (nine hand-guessed correction-language regexes among
+them) are a hard ceiling on the whole pipeline: Tier 2 can only ever refine what Tier 1 already
+caught, never rescue what Tier 1 silently discarded. If the fixed patterns don't cover how a
+given developer actually phrases a correction, that friction is lost before Tier 2 ever runs, no
+matter how good Tier 2's judgment is.
+
+**Built in response:** `engine/tier1-recall-audit.mjs` — runs every session Tier 1 did *not*
+flag through Sonnet (effort=high), shows it the exact fixed patterns/thresholds already in place
+(`CORRECTION_PATTERNS` etc., now exported from `heuristics.mjs` for exactly this), and asks it to
+independently judge whether real friction was missed, extracting the exact phrasing verbatim so
+it can be considered as a new fixed pattern — evidence-driven widening, not more guessing. Same
+posture as `tier2-compare.mjs`: never writes to the real Local Buffer, decision-support only.
+
+Run against `fleek-monorepo`/`fleek-api`'s own 30-day history the same day it was built: only 1
+non-candidate session existed in that window (the Tier 1 heuristics already have a high hit
+rate on this particular dataset), so this specific run didn't surface strong evidence either
+way — expected, not a validation failure. The real signal will come from a developer whose
+session mix differs more.
+
+**Rollout step, added to the same pre-widening checklist as the Tier 2 comparison:** run
+`node engine/tier1-recall-audit.mjs --repo <their-repo> --days 30` alongside
+`tier2-compare.mjs` before widening Hone to a new developer's machine. If it surfaces real
+missed-phrase evidence, that's the trigger to actually widen `CORRECTION_PATTERNS` (or add a new
+heuristic) from real data — don't just note the finding and move on.
+
 ## Feeding decisions back
 
 This repo is where the technical work happens. Findings, design decisions, and working code

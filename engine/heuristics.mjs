@@ -5,7 +5,9 @@
 // (missed friction) are the worse failure mode, so the gate is permissive.
 import { tokenize, jaccard } from './similarity.mjs';
 
-const CORRECTION_PATTERNS = [
+// Exported so engine/tier1-recall-audit.mjs can show an LLM exactly what's
+// already covered, rather than re-discovering patterns that already exist.
+export const CORRECTION_PATTERNS = [
     /\bno[,.]?\s/i,
     /that'?s (not|wrong)/i,
     /don'?t do that/i,
@@ -17,8 +19,8 @@ const CORRECTION_PATTERNS = [
     /stop doing/i,
 ];
 
-const SIMILARITY_THRESHOLD = 0.6;
-const TOOL_VOLUME_THRESHOLD = 15;
+export const SIMILARITY_THRESHOLD = 0.6;
+export const TOOL_VOLUME_THRESHOLD = 15;
 
 // Mirrors this plugin's own documented routing ladder (see
 // hooks/model-routing-context.mjs / skills/model-router): haiku should
@@ -31,7 +33,7 @@ const FRONTIER_MODEL_RE = /opus|fable/i;
 const FRONTIER_EFFORT_RE = /^(high|xhigh|max)$/i;
 const DELEGABLE_TOOLS = new Set(['Bash', 'Grep', 'Read', 'Glob', 'WebFetch', 'WebSearch']);
 const DELEGATION_TOOLS = new Set(['Agent', 'Task']);
-const FRONTIER_TOOLCALL_THRESHOLD = 10;
+export const FRONTIER_TOOLCALL_THRESHOLD = 10;
 
 export function runTier1(turns) {
     const anchors = [];
