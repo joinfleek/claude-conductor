@@ -17,14 +17,30 @@ import { runTier1 } from './heuristics.mjs';
 import { redact } from './redact.mjs';
 import { invokeTier2 } from './tier2.mjs';
 
-// Preference order when Tier 1 fires multiple heuristics but only one anchor
-// escalates to Tier 2 in v1: explicit correction language is the strongest
-// direct signal; frontier-model-no-delegation is a distinct but precise
-// signal (a conjunction of two conditions, not a lone threshold), so it
-// ranks next; then repetition, then the coarser volume-without-reflection check.
+// Order matters: this picks WHICH turn gets excerpted for Tier 2, so the
+// most informative signal should win. Revised 2026-08-24 from three real
+// calibration runs.
+//
+// E and F lead because they point at concrete code evidence (a file rewritten
+// N times; files touched that nobody asked about) and they target the two
+// complaints developers actually voice.
+//
+// A and B are DEMOTED, deliberately kept rather than fixed: they're
+// near-free to evaluate so they stay in the harness, but neither is trusted
+// to drive anchor selection. B in particular is known-noisy - its
+// /\bno[,.]?\s/ pattern fires on "no idea"/"no problem" and misses real
+// corrections like "not what I asked" - so it fires on ~57% of sessions while
+// contributing almost nothing. Left unfixed by explicit decision; just no
+// longer load-bearing.
+//
+// C is last: it fires on ~95% of candidates (>15 tool calls describes nearly
+// every real working session), so it's the weakest discriminator available.
 const ANCHOR_PRIORITY = [
-    'B-correction-language',
+    'E-file-rework',
+    'F-scope-divergence',
     'D-frontier-no-delegation',
+    'G-high-iteration',
+    'B-correction-language',
     'A-near-duplicate-prompt',
     'C-unreflected-volume',
 ];
@@ -45,6 +61,40 @@ function developerEmail(repoPath) {
     }
 }
 
+// Objective session-scale measurements for the Tier 2 prompt. Counts only -
+// no heuristic names, no thresholds, no language implying anything is wrong.
+// The judge decides whether 49 edits to one file is thrash or appropriate
+// iteration; our job is only to make the number visible, since a ~6-turn
+// excerpt cannot show it.
+const EDIT_TOOL_NAMES = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
+
+function sessionFacts(turns, repoPath) {
+    const root = repoPath ? (repoPath.endsWith('/') ? repoPath : `${repoPath}/`) : null;
+    const inRepo = (p) => !root || p.startsWith(root);
+    const facts = [];
+    const humanTurns = turns.filter((t) => t.isHumanPrompt).length;
+    const editsByFile = new Map();
+    let toolCalls = 0;
+    for (const t of turns) {
+        toolCalls += t.toolUses.length;
+        for (const u of t.toolUses) {
+            if (!EDIT_TOOL_NAMES.has(u.name) || !u.filePath || !inRepo(u.filePath)) continue;
+            editsByFile.set(u.filePath, (editsByFile.get(u.filePath) || 0) + 1);
+        }
+    }
+    facts.push(`${humanTurns} developer message(s), ${toolCalls} tool call(s) in total.`);
+    if (editsByFile.size) {
+        const sorted = [...editsByFile.entries()].sort((a, b) => b[1] - a[1]);
+        const totalEdits = sorted.reduce((n, [, c]) => n + c, 0);
+        facts.push(`${totalEdits} file edit(s) across ${editsByFile.size} distinct file(s).`);
+        const top = sorted.slice(0, 3).filter(([, c]) => c > 1);
+        for (const [file, count] of top) {
+            facts.push(`The file ${file.split('/').slice(-2).join('/')} was edited ${count} separate times.`);
+        }
+    }
+    return facts;
+}
+
 function findingId(sessionId, heuristic, turnIndex) {
     return createHash('sha256').update(`${sessionId}:${heuristic}:${turnIndex}`).digest('hex').slice(0, 16);
 }
@@ -62,14 +112,14 @@ export function assess({ transcriptPath, sessionId, trigger, tier2Model, tier2Ef
     }
     if (!turns.length) return [];
 
-    const tier1 = runTier1(turns);
+    const tier1 = runTier1(turns, { repoPath: trigger.repoPath });
     if (!tier1.isCandidate) return [];
 
     const anchor = pickAnchor(tier1.anchors);
     if (!anchor) return [];
 
     const excerpt = redact(excerptAround(turns, anchor.turnIndex, 3, 3000));
-    const tier2Args = { excerpt, heuristics: tier1.heuristicsFired, anchorDetail: anchor.detail, trigger };
+    const tier2Args = { excerpt, trigger, sessionFacts: sessionFacts(turns, trigger.repoPath) };
     if (tier2Model) tier2Args.model = tier2Model;
     if (tier2Effort) tier2Args.effort = tier2Effort;
     const tier2 = invokeTier2(tier2Args);

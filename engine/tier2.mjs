@@ -4,18 +4,25 @@
 // fields are named to map directly onto each repo's claude-feedback-log
 // entry format (see engine/README.md).
 //
-// Default is sonnet/high, not haiku - decided 2026-08-21 from a real 10-
-// session comparison (engine/tier2-compare.mjs) on fleek-monorepo: haiku
-// flagged 9/10 sessions, sonnet(high) and opus(medium) both flagged only
-// 2/10, converging on the clearest true positive. This plugin's own routing
-// ladder (hooks/model-routing-context.mjs) already puts "verification/
-// judging" - which is what Tier 2 actually does - at sonnet, not haiku;
-// haiku's near-universal flag rate looked like too low a bar for something
-// feeding a human review gate, not genuine thoroughness. Opus showed no
-// quality edge over sonnet in that comparison, so it isn't the default.
-// Before widening this to a new developer's machine, re-run the comparison
-// against THEIR session history first (README's "Tier 2 model comparison"
-// section) - one developer's data isn't proof this generalizes.
+// Default is sonnet/high. CONTESTED as of 2026-08-24 - do not treat as settled.
+//
+// It was chosen on 2026-08-21 from a 10-session comparison where haiku flagged
+// 9/10 and sonnet/opus flagged 2/10 each. That sample was far too small to
+// support the conclusion (a 95% CI on 2/10 spans roughly 3-56%), and a third
+// calibration run (37 sessions) came back haiku 18 / sonnet 17 / opus 9 -
+// haiku and sonnet at effectively the same rate, which the original rationale
+// does not predict.
+//
+// In that larger run opus/medium was the clear precision leader: 8 distinct
+// issues from 9 findings, vs sonnet's 8 from 17. Sonnet has better recall
+// (it caught all 8 distinct issues; opus caught 6 of those plus 2 sonnet
+// missed). Sonnet is kept as the default for now on recall grounds, and
+// because much of the noise it produced traced to prompt contamination that
+// has since been removed (see buildPrompt) - so its distinct-yield should
+// improve without a model change. Re-measure before touching this again.
+//
+// Before widening to a new developer's machine, re-run the comparison against
+// THEIR history first (README's "Tier 2 model comparison" section).
 import { execFileSync } from 'node:child_process';
 import { logEvent } from './log.mjs';
 
@@ -23,22 +30,33 @@ const DEFAULT_MODEL = process.env.HONE_TIER2_MODEL || 'sonnet';
 const DEFAULT_EFFORT = process.env.HONE_TIER2_EFFORT || 'high';
 const TIER2_TIMEOUT_MS = 90_000;
 
-function buildPrompt({ excerpt, heuristics, anchorDetail, trigger }) {
+// NOTE: `heuristics` and `anchorDetail` are deliberately NOT passed into the
+// prompt. They used to be, and it contaminated every judgment: telling the
+// model "D-frontier-no-delegation fired" plus giving it a worked example of a
+// routing rule caused it to write that answer back. Real output from that
+// era: "the sheer volume of direct calls (221, per heuristic metadata)" and
+// "the heuristics flagged this as a near-duplicate prompt" - the judge citing
+// the label instead of reading the transcript. The heuristics decide WHICH
+// excerpt to send; the judge must decide what's in it, independently.
+function buildPrompt({ excerpt, trigger, sessionFacts }) {
     return [
         "You are assessing a short excerpt from a developer's Claude Code session transcript for",
         'harness friction: a place the AI coding tool likely fell short in a way that GENERALIZES',
-        'to a reusable harness improvement - not a one-off mistake. Two distinct categories both count:',
-        '  (a) CORRECTNESS/PROMPTING friction - a mistake, a correction, ambiguity, rework.',
-        '  (b) MODEL/EFFORT ROUTING inefficiency - a frontier-tier model or high/xhigh/max effort doing',
-        '      mechanical legwork (search, fetch, broad exploration, log/data sweeps) directly instead of',
-        '      delegating it to a cheaper tier. This is a cost/speed gap, not a correctness one - judge it',
-        '      by whether the delegated-out work genuinely fit a cheaper tier, not by whether the task',
-        "      ultimately succeeded. A rule candidate here reads like \"delegate X-shaped work to haiku\"",
-        '      or "add this to the routing ladder", not a corrected mistake.',
+        'to a reusable harness improvement (a skill, rule, or hook) - not a one-off mistake.',
+        '',
+        'Judge the excerpt on its own terms. Do not assume a problem exists because you were sent',
+        'this excerpt; most sessions contain nothing worth reporting, and "no finding" is the correct',
+        'answer far more often than not.',
         '',
         `Trigger: ${trigger.type} in repo ${trigger.repo}`,
-        `Heuristic(s) that flagged this excerpt: ${heuristics.join(', ')}`,
-        anchorDetail ? `Flagged detail: ${anchorDetail}` : '',
+        // Objective, session-wide measurements. The excerpt is a ~6-turn window
+        // and physically cannot show session-scale facts like "this file was
+        // rewritten 49 times". These are counts, not conclusions: no heuristic
+        // names, no suggested rule shapes, nothing implying a problem exists.
+        // Removing these entirely (an over-correction while stripping prompt
+        // contamination) made the heaviest-rework session in the corpus return
+        // "no finding" - the judge could see one ordinary edit and nothing else.
+        ...(sessionFacts?.length ? ['', 'Measured facts about the full session (not visible in the excerpt):', ...sessionFacts.map((f) => `- ${f}`)] : []),
         '',
         '--- TRANSCRIPT EXCERPT (secrets redacted) ---',
         excerpt,
@@ -53,8 +71,8 @@ function buildPrompt({ excerpt, heuristics, anchorDetail, trigger }) {
         '   excerpt, describe what the situation implies instead, prefixed "Inferred:"),',
         ' "ruleCandidate": string (1 sentence: what harness change - skill, rule, or hook - might help),',
         ' "confidence": "low"|"medium"|"high"}',
-        'If the excerpt does NOT show a real, generalizable harness gap in EITHER category above, set',
-        'isFinding to false and leave the other string fields as "".',
+        'If the excerpt does NOT show a real, generalizable harness gap, set isFinding to false and',
+        'leave the other string fields as "".',
     ]
         .filter(Boolean)
         .join('\n');
@@ -64,8 +82,8 @@ function buildPrompt({ excerpt, heuristics, anchorDetail, trigger }) {
 // overridden per call - lets a single process (e.g. a model-comparison run)
 // exercise multiple configs without re-spawning, without changing the
 // default any other caller (sweep-worker, pilot-run) gets when it doesn't pass them.
-export function invokeTier2({ excerpt, heuristics, anchorDetail, trigger, model = DEFAULT_MODEL, effort = DEFAULT_EFFORT }) {
-    const prompt = buildPrompt({ excerpt, heuristics, anchorDetail, trigger });
+export function invokeTier2({ excerpt, trigger, sessionFacts, model = DEFAULT_MODEL, effort = DEFAULT_EFFORT }) {
+    const prompt = buildPrompt({ excerpt, trigger, sessionFacts });
     const args = ['-p', prompt, '--model', model, '--output-format', 'text'];
     if (effort) args.push('--effort', effort);
 

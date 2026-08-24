@@ -22,7 +22,13 @@ function extractBlocks(content) {
         if (block.type === 'text' && typeof block.text === 'string') {
             textParts.push(block.text);
         } else if (block.type === 'tool_use') {
-            toolUses.push({ name: block.name, id: block.id });
+            // Keep the edited file path. Without this the engine can see THAT
+            // something was edited but not WHAT - which is why heuristics E/F/G
+            // (rework churn, scope divergence, iteration count) were impossible
+            // to compute and the two heaviest-rework sessions in the corpus
+            // produced zero findings.
+            const filePath = block.input?.file_path || block.input?.notebook_path || null;
+            toolUses.push({ name: block.name, id: block.id, filePath });
         } else if (block.type === 'tool_result') {
             toolResults.push({ toolUseId: block.tool_use_id });
         }

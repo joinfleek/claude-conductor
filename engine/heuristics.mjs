@@ -35,7 +35,56 @@ const DELEGABLE_TOOLS = new Set(['Bash', 'Grep', 'Read', 'Glob', 'WebFetch', 'We
 const DELEGATION_TOOLS = new Set(['Agent', 'Task']);
 export const FRONTIER_TOOLCALL_THRESHOLD = 10;
 
-export function runTier1(turns) {
+// E/F/G target the two complaints developers actually voice, which A-D never
+// measured: "it takes a lot of prompting to get a feature right" and "AI makes
+// changes which are not necessary". A measures textual repetition between
+// consecutive prompts, which is the wrong proxy - real iteration reuses almost
+// no words ("make it tighter" -> "still too much padding" -> "try 12px").
+// C counts ALL tool calls, so a 30-grep analysis session looks identical to a
+// 30-edit rework spiral. These three read the edited FILE PATHS instead.
+// Thresholds are calibrated against observed data, not guessed: the two
+// heaviest sessions in the corpus showed 49 and 26 edits to a single file,
+// with 288 and 85 human turns; ordinary sessions sit at 2-6 turns and 0-3 edits.
+const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
+export const FILE_REWORK_THRESHOLD = 4; // same file edited this many times = rework
+export const UNMENTIONED_FILES_THRESHOLD = 3; // edited-but-never-discussed files
+export const ITERATION_TURN_THRESHOLD = 25; // human turns in a session that produced code
+
+// A file counts as "mentioned" if its basename (with or without extension) or
+// its immediate parent directory appears anywhere in the developer's own text.
+// Deliberately generous - developers say "the CategoryList component", not a
+// full path - because a false "unmentioned" is worse than a missed one here.
+function mentionedInPrompts(filePath, humanText) {
+    const parts = filePath.split('/').filter(Boolean);
+    const base = parts[parts.length - 1] || '';
+    const stem = base.replace(/\.[^.]+$/, '');
+    const parent = parts[parts.length - 2] || '';
+    for (const token of [base, stem, parent]) {
+        if (token && token.length > 2 && humanText.includes(token.toLowerCase())) return true;
+    }
+    return false;
+}
+
+// Anchoring E/G on the edit turn itself lands inside a dense run of tool
+// calls, and excerptAround collapses those to one-liners - the judge receives
+// six lines of "[assistant used tools: Edit]" with no developer intent
+// visible, and correctly returns nothing. Anchor on the nearest preceding
+// human turn instead so the excerpt carries the actual instruction.
+function nearestHumanTurnBefore(turns, index) {
+    for (let i = Math.min(index, turns.length - 1); i >= 0; i--) {
+        if (turns[i].isHumanPrompt) return i;
+    }
+    return index;
+}
+
+// opts.repoPath - when given, E and F only consider files INSIDE the repo.
+// Without it, scratch work pollutes the signal: the heaviest "rework" in the
+// corpus was 49 edits to ~/Desktop/ds-review/index.html, a throwaway HTML
+// page being iterated on visually. That is normal authoring, not thrash, and
+// it isn't repo code at all.
+export function runTier1(turns, opts = {}) {
+    const repoPath = opts.repoPath ? (opts.repoPath.endsWith('/') ? opts.repoPath : `${opts.repoPath}/`) : null;
+    const inRepo = (p) => !repoPath || p.startsWith(repoPath);
     const anchors = [];
     const heuristicsFired = new Set();
 
@@ -108,6 +157,71 @@ export function runTier1(turns) {
             turnIndex: frontierAnchorTurn ? frontierAnchorTurn.index : turns.length - 1,
             heuristic: 'D-frontier-no-delegation',
             detail: `${frontierLabel} made ${frontierToolCalls} direct Bash/Grep/Read/Glob/WebFetch/WebSearch calls itself; no Agent/Task delegation anywhere in the session`,
+        });
+    }
+
+    // ---- E/F/G: read the edited file paths, not the conversation surface ----
+    const editTurns = [];
+    const editsByFile = new Map(); // path -> { count, lastTurnIndex, firstTurnIndex }
+    for (const t of turns) {
+        if (t.role !== 'assistant') continue;
+        for (const u of t.toolUses) {
+            if (!EDIT_TOOLS.has(u.name) || !u.filePath) continue;
+            if (!inRepo(u.filePath)) continue; // scratch/Desktop files are not repo rework
+            editTurns.push(t);
+            const e = editsByFile.get(u.filePath) || { count: 0, firstTurnIndex: t.index, lastTurnIndex: t.index };
+            e.count += 1;
+            e.lastTurnIndex = t.index;
+            editsByFile.set(u.filePath, e);
+        }
+    }
+
+    // E - the same file rewritten over and over: the literal fingerprint of
+    // "it took a lot of prompting to get this right".
+    let worstFile = null;
+    for (const [file, e] of editsByFile) {
+        if (!worstFile || e.count > worstFile.e.count) worstFile = { file, e };
+    }
+    if (worstFile && worstFile.e.count >= FILE_REWORK_THRESHOLD) {
+        heuristicsFired.add('E-file-rework');
+        anchors.push({
+            turnIndex: nearestHumanTurnBefore(turns, worstFile.e.lastTurnIndex),
+            heuristic: 'E-file-rework',
+            detail: `${worstFile.file} was edited ${worstFile.e.count} times in this session`,
+        });
+    }
+
+    // F - files edited that the developer never once referred to: the
+    // mechanical fingerprint of "AI made changes which weren't necessary".
+    const humanText = turns
+        .filter((t) => t.isHumanPrompt)
+        .map((t) => t.text)
+        .join('\n')
+        .toLowerCase();
+    const unmentioned = [...editsByFile.keys()].filter((f) => !mentionedInPrompts(f, humanText));
+    if (unmentioned.length >= UNMENTIONED_FILES_THRESHOLD) {
+        heuristicsFired.add('F-scope-divergence');
+        const firstUnmentioned = unmentioned
+            .map((f) => ({ f, idx: editsByFile.get(f).firstTurnIndex }))
+            .sort((a, b) => a.idx - b.idx)[0];
+        anchors.push({
+            turnIndex: firstUnmentioned.idx,
+            heuristic: 'F-scope-divergence',
+            detail:
+                `${unmentioned.length} of ${editsByFile.size} edited files were never mentioned by the developer: ` +
+                unmentioned.slice(0, 5).join(', '),
+        });
+    }
+
+    // G - many rounds of back-and-forth in a session that actually produced
+    // code. Gated on edits so long analysis/debugging sessions don't fire.
+    const humanTurnCount = humanTurns.length;
+    if (humanTurnCount >= ITERATION_TURN_THRESHOLD && editsByFile.size > 0) {
+        heuristicsFired.add('G-high-iteration');
+        anchors.push({
+            turnIndex: nearestHumanTurnBefore(turns, editTurns.length ? editTurns[editTurns.length - 1].index : turns.length - 1),
+            heuristic: 'G-high-iteration',
+            detail: `${humanTurnCount} developer turns to produce edits across ${editsByFile.size} file(s)`,
         });
     }
 

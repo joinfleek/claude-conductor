@@ -93,7 +93,7 @@ function main() {
         }
         if (!turns.length) continue;
 
-        const tier1 = runTier1(turns);
+        const tier1 = runTier1(turns, { repoPath });
         if (!tier1.isCandidate) continue;
         candidateCount++;
 
