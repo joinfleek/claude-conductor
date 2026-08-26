@@ -77,11 +77,25 @@ ones.
 `6d08ed5e` (33 edits), `f7d92f99` (34 edits) and `e70ee658` (9 edits) — sessions where *all seven*
 heuristics fired. Yash flagged this himself.
 
-This is the sharpest open problem in the pipeline. E is doing its job; Tier 2 is throwing the
-result away. The likely cause is the same one §4 records: a ~6-turn excerpt cannot show
-session-scale churn, and `sessionFacts()` passes counts but the judge still sees one ordinary
-edit at the anchor. **The fix is probably anchor selection, not the prompt** — see §9's
-correction-proximity recommendation, which was designed for exactly this and left unbuilt.
+E is doing its job; Tier 2 is throwing the result away.
+
+> **⚠️ Corrected 2026-08-26 — the original diagnosis here was wrong, and wrong in a way that
+> matters.**
+>
+> This section previously read: *"`sessionFacts()` passes counts but the judge still sees one
+> ordinary edit at the anchor. The fix is probably anchor selection, not the prompt."*
+>
+> **`sessionFacts` was never passed in this run.** `tier2-compare.mjs:114` — the tool that
+> produced every comparison number in runs 5, 6, 8 and 9 — calls `invokeTier2` with `heuristics`
+> and `anchorDetail`, which `invokeTier2` does not accept and silently discards. Production
+> (`assess.mjs:122`) passes `sessionFacts`; the calibration harness does not, and never has.
+>
+> So the judge **literally never saw the edit counts** on these sessions. It was shown a six-turn
+> excerpt containing one ordinary edit and asked whether anything went wrong. Returning "no
+> finding" was the correct answer to the question it was actually asked.
+>
+> This is very likely not an anchor-selection problem at all. See
+> [README §4a](../README.md).
 
 **2. `pilot-run.mjs` never prints E's detail.** The file path and edit count live in the anchor
 objects and never reach the report. Every developer asked for E's detail has had to pull it from

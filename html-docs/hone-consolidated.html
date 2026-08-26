@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hone Calibration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#FAFAFB; --surface:#FFFFFF; --surface-2:#F2F4F7;
+  --ink:#14171D; --ink-2:#454C59; --ink-3:#6B7383;
+  --rule:#E1E5EB; --rule-2:#CDD4DE;
+  --accent:#2D5A86; --accent-soft:#E8F0F7;
+  --warn:#9A5B14; --warn-soft:#FBF0E1;
+  --good:#2A6350; --good-soft:#E6F1EC;
+  --bad:#963636; --bad-soft:#FAEAEA;
+  --shadow:0 1px 2px rgba(20,23,29,.05),0 4px 16px rgba(20,23,29,.04);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1015; --surface:#151920; --surface-2:#1C222B;
+    --ink:#E9EBEF; --ink-2:#B4BBC7; --ink-3:#868F9E;
+    --rule:#252B35; --rule-2:#333B47;
+    --accent:#7FACD8; --accent-soft:#182534;
+    --warn:#D9A055; --warn-soft:#2A2113;
+    --good:#6FB795; --good-soft:#132620;
+    --bad:#DB8686; --bad-soft:#2A1717;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.2);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1015; --surface:#151920; --surface-2:#1C222B;
+  --ink:#E9EBEF; --ink-2:#B4BBC7; --ink-3:#868F9E;
+  --rule:#252B35; --rule-2:#333B47;
+  --accent:#7FACD8; --accent-soft:#182534;
+  --warn:#D9A055; --warn-soft:#2A2113;
+  --good:#6FB795; --good-soft:#132620;
+  --bad:#DB8686; --bad-soft:#2A1717;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.2);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16.5px; line-height:1.62; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:920px;margin:0 auto;padding:0 24px}
+h1,h2,h3,h4{font-family:"IBM Plex Serif",Georgia,serif;text-wrap:balance;line-height:1.25;margin:0}
+code,kbd,.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+code{font-size:.88em;background:var(--surface-2);padding:.12em .38em;border-radius:3px;color:var(--ink-2)}
+a{color:var(--accent)}
+p{margin:0 0 1.05em}
+strong{font-weight:600;color:var(--ink)}
+
+/* ---------- masthead ---------- */
+header.mast{border-bottom:1px solid var(--rule);background:var(--surface);padding:52px 0 34px}
+.eyebrow{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin-bottom:14px}
+h1{font-size:clamp(32px,5.4vw,46px);font-weight:600;letter-spacing:-.015em}
+.dek{color:var(--ink-2);font-size:18px;max-width:60ch;margin-top:14px}
+.stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+.stat{background:var(--surface-2);border:1px solid var(--rule);border-radius:6px;padding:9px 14px;min-width:88px}
+.stat b{display:block;font-family:"IBM Plex Mono",monospace;font-size:21px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--accent)}
+.stat span{font-size:11.5px;color:var(--ink-3);letter-spacing:.03em}
+
+/* ---------- nav ---------- */
+nav{position:sticky;top:0;z-index:20;background:var(--bg);
+  background:color-mix(in srgb,var(--bg) 92%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--rule)}
+nav ol{display:flex;flex-wrap:wrap;gap:0;list-style:none;margin:0;padding:0;max-width:920px;margin:0 auto}
+nav a{display:block;padding:12px 15px;font-size:13.5px;color:var(--ink-2);text-decoration:none;border-bottom:2px solid transparent}
+nav a:hover{color:var(--accent);border-bottom-color:var(--rule-2)}
+nav .num{font-family:"IBM Plex Mono",monospace;color:var(--ink-3);margin-right:6px;font-size:12px}
+
+/* ---------- sections ---------- */
+section{padding:46px 0;border-bottom:1px solid var(--rule)}
+section:last-of-type{border-bottom:0}
+h2{font-size:29px;font-weight:600;letter-spacing:-.01em;margin-bottom:6px;display:flex;align-items:baseline;gap:13px}
+h2 .n{font-family:"IBM Plex Mono",monospace;font-size:14px;color:var(--accent);font-weight:500;
+  background:var(--accent-soft);border-radius:5px;padding:3px 9px;flex:none}
+h3{font-size:20px;font-weight:600;margin:32px 0 9px}
+h4{font-size:16.5px;font-weight:600;margin:22px 0 7px;font-family:"IBM Plex Sans",sans-serif}
+.lede{font-size:17.5px;color:var(--ink-2);margin-bottom:22px;max-width:64ch}
+
+/* ---------- callouts ---------- */
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:15px 18px;border-radius:0 6px 6px 0;margin:20px 0}
+.note.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.note.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.note.good{border-left-color:var(--good);background:var(--good-soft)}
+.note p:last-child{margin-bottom:0}
+.note .tag{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;margin-bottom:7px;color:var(--ink-3)}
+
+blockquote{margin:16px 0;padding:2px 0 2px 18px;border-left:2px solid var(--rule-2);color:var(--ink-2);font-style:italic}
+blockquote p:last-child{margin-bottom:0}
+
+/* ---------- tables ---------- */
+.tw{overflow-x:auto;margin:20px 0;border:1px solid var(--rule);border-radius:7px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:520px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{background:var(--surface-2);font-weight:600;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;font-family:"IBM Plex Sans",sans-serif}
+.pill.fixed{background:var(--good-soft);color:var(--good)}
+.pill.open{background:var(--bad-soft);color:var(--bad)}
+.pill.delib{background:var(--warn-soft);color:var(--warn)}
+
+/* ---------- the cutoff device ---------- */
+.era{border:1px solid var(--rule);border-radius:8px;overflow:hidden;margin:18px 0}
+.era>.hd{padding:9px 15px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;
+  display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.era.before>.hd{background:var(--warn-soft);color:var(--warn)}
+.era.after>.hd{background:var(--good-soft);color:var(--good)}
+.era .tw{margin:0;border:0;border-radius:0}
+.era .hd .cfg{font-family:"IBM Plex Mono",monospace;text-transform:none;letter-spacing:0;font-weight:400;opacity:.85}
+.cutband{display:flex;align-items:center;gap:14px;margin:22px 0;color:var(--ink-3);font-size:12.5px}
+.cutband::before,.cutband::after{content:"";flex:1;height:1px;background:repeating-linear-gradient(90deg,var(--rule-2) 0 5px,transparent 5px 10px)}
+
+/* ---------- people ---------- */
+.people{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(285px,1fr));margin-top:22px}
+.person{background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:17px 19px;box-shadow:var(--shadow)}
+.person h4{margin:0 0 3px;font-size:17px;font-family:"IBM Plex Serif",serif}
+.person .meta{font-size:11.5px;color:var(--ink-3);margin-bottom:10px;font-family:"IBM Plex Mono",monospace}
+.person p{font-size:14.7px;margin-bottom:.8em;color:var(--ink-2)}
+.person p:last-child{margin-bottom:0}
+.person.hero{border-color:var(--accent);border-width:1.5px}
+.person.hero .meta{color:var(--accent)}
+
+ul,ol{margin:0 0 1.05em;padding-left:1.35em}
+li{margin-bottom:.4em}
+li::marker{color:var(--ink-3)}
+.tight li{margin-bottom:.22em}
+
+footer{padding:34px 0 60px;color:var(--ink-3);font-size:13.5px}
+@media(max-width:640px){
+  body{font-size:16px}
+  section{padding:36px 0}
+  h2{font-size:24px;gap:9px}
+  nav a{padding:10px 11px;font-size:12.5px}
+}
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="wrap">
+    <div class="eyebrow">Fleek · Tech Velocity Initiative · AI-1</div>
+    <h1>Hone, calibrated</h1>
+    <p class="dek">Eight developers ran a local harness-improvement tool against their own Claude Code history. This is what it found — and what it got wrong.</p>
+    <div class="stats">
+      <div class="stat"><b>9</b><span>runs</span></div>
+      <div class="stat"><b>8</b><span>developers</span></div>
+      <div class="stat"><b>~400</b><span>sessions</span></div>
+      <div class="stat"><b>2</b><span>repos</span></div>
+      <div class="stat"><b>21</b><span>bugs in the tool</span></div>
+      <div class="stat"><b>0</b><span>findings merged</span></div>
+    </div>
+  </div>
+</header>
+
+<nav>
+  <ol>
+    <li><a href="#s1"><span class="num">01</span>Summary</a></li>
+    <li><a href="#s2"><span class="num">02</span>What we improved</a></li>
+    <li><a href="#s3"><span class="num">03</span>Everyone who ran it</a></li>
+    <li><a href="#s4"><span class="num">04</span>The checks</a></li>
+    <li><a href="#s5"><span class="num">05</span>Independent assessment</a></li>
+  </ol>
+</nav>
+
+<main class="wrap">
+
+<!-- ============ 1 ============ -->
+<section id="s1">
+  <h2><span class="n">01</span>Summary</h2>
+  <p class="lede">Two paragraphs, then the detail.</p>
+  <p>We built a local tool called <strong>Hone</strong> that reads a developer's own Claude Code session history on their own machine and tries to spot where working with the AI went badly — so the friction turns into a fix to the harness (a rule, a skill, a hook) instead of being forgotten. Nothing leaves the machine until a human approves it. Over eight days, eight engineers ran it across our frontend and backend repos, producing nine runs and about 400 sessions of real history.</p>
+  <div class="note bad">
+    <span class="tag">The honest verdict</span>
+    <p><strong>The machinery works, the measurements were mostly wrong, and the tool has not yet been tested on the only question that matters.</strong> Hone reliably finds one category of problem — the AI taking a consequential action without asking, or claiming something it didn't verify — and found it independently across three developers and both repos. It does <em>not</em> yet measure the thing the project was started for: <em>"it takes too much prompting to get a feature right."</em> Several confident numbers turned out to be artefacts of our own bugs, and each was caught only because someone read the raw output instead of the summary. Nothing has gone through the final review gate, so we cannot say whether a single finding is worth a reviewer's time.</p>
+  </div>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="s2">
+  <h2><span class="n">02</span>What we improved along the way</h2>
+  <p class="lede">Changes made to Hone <em>during</em> the exercise, each because the data showed something was broken. Roughly in order of how much they mattered.</p>
+
+  <h4>The parser was throwing away the evidence</h4>
+  <p>Hone recorded <em>that</em> a file was edited but not <em>which</em> file. That one omission meant the tool could only measure the shape of the conversation, never the work. Keeping the filename — a one-line change — is what made everything below possible.</p>
+
+  <h4>Three new checks: rework, scope drift, iteration count</h4>
+  <p>With filenames available we added checks for the same file being edited over and over, for files being changed that the developer never mentioned, and for sessions with unusually many back-and-forth turns. These were meant to capture the two complaints engineers actually voice. They partly do.</p>
+
+  <h4>We were telling the AI judge what to find</h4>
+  <p>The prompt that asks the AI to assess a session was leaking our own check names into it, plus a worked example of a "good" answer. The judge dutifully wrote that answer back. A pattern we had spent three days treating as a discovery about our codebase was substantially manufactured by our own prompt.</p>
+  <div class="note bad">
+    <span class="tag">Still outstanding — the most important thing in this document</span>
+    <p><strong>Only half of that fix ever reached the tool we tested with.</strong> The repair had two parts: stop telling the judge what to look for, and <em>start</em> telling it the session's basic numbers (how many edits, how many turns) that a short excerpt can't show. The first half took effect everywhere. The second half was wired into the production path only — the calibration tool never passed those numbers, and still doesn't.</p>
+    <p>Found on the last day, by a review that read the code rather than the documentation. It means <strong>every measurement we took after the fix was taken on a half-fixed configuration.</strong> See section 5.</p>
+  </div>
+
+  <h4>Repo identity from the git remote, not the folder name</h4>
+  <p>One engineer's checkout was in a folder called <code>fe-apps</code>. The tool would have worked right up to the moment he approved a finding, then crashed. Now it asks git what the repo is.</p>
+
+  <h4>Three fixes to the post-merge rework measurement</h4>
+  <p>Each was inflating or hiding the headline number: merged branches reported zero changed files, a squash-merge counted as its own follow-up fix, and auto-generated files made unrelated commits look related.</p>
+
+  <h4>Reports now save as they go</h4>
+  <p>The model-comparison tool wrote its report only at the very end, so stopping it at a time limit threw away everything it had already done. One engineer lost a 145-session run that way.</p>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s3">
+  <h2><span class="n">03</span>Everyone who ran it</h2>
+  <p class="lede">What they ran, what came out, and what their run taught us that no other run did.</p>
+
+  <div class="people">
+    <article class="person">
+      <h4>Yugal</h4>
+      <div class="meta">frontend · 19 Aug · 11 sessions</div>
+      <p>The first real run. It flagged 10 of 11 sessions and produced nothing genuinely useful. The conclusion at the time was "this isn't working" — wrong, but for an interesting reason: 11 sessions is far too small a sample to tell.</p>
+      <p>It also produced the most memorable false alarm of the exercise: a file edited 49 times that looked like heavy rework turned out to be a scratch HTML page on the Desktop, not repo code at all.</p>
+    </article>
+
+    <article class="person">
+      <h4>Lenvin</h4>
+      <div class="meta">frontend · 21 Aug · 17 sessions</div>
+      <p>Most of what came back was the same complaint restated five times. This is where we concluded "the tool only measures cost and routing, not prompting quality" — also wrong, and generalised from one engineer whose work that fortnight was incident triage rather than building features.</p>
+      <p>His run did catch a real crash-in-waiting: his checkout folder had an unusual name, and the tool would have failed at the exact moment he tried to approve something.</p>
+    </article>
+
+    <article class="person">
+      <h4>Yash</h4>
+      <div class="meta">frontend · 24 Aug · before the fix</div>
+      <p>37 sessions, and the first run to produce genuinely useful results — a constraint that keeps getting violated because nothing enforces it, an AI bypassing a safety check without asking, a design document asserting a feature exists when it doesn't.</p>
+      <p>But 9 of its 17 findings were the same "should have delegated this" complaint reworded. That was our contaminated prompt talking to itself, though we didn't know it yet.</p>
+    </article>
+
+    <article class="person hero">
+      <h4>Yash, again</h4>
+      <div class="meta">frontend · 24 Aug · after the fix</div>
+      <p><strong>The most important run of the exercise.</strong> Same person, same repo, same sessions — only the tool changed. The repeated complaint went from 9 occurrences to <strong>zero</strong>, and genuinely distinct findings went from about half to about three-quarters.</p>
+      <p>Because nothing but the engine varied, this is the closest thing we have to a controlled experiment. It turned "we think the prompt was contaminating results" into something we know.</p>
+      <p>He also spotted that the three sessions with the <em>heaviest</em> rework got "nothing to report" from all three AI models — the tool finding exactly the sessions it was built for, then discarding them.</p>
+    </article>
+
+    <article class="person">
+      <h4>Aarushi</h4>
+      <div class="meta">backend · 24 Aug · 104 sessions</div>
+      <p>The first backend run. Her most useful contribution was negative — the expensive check never finished and no follow-up came, so the backend has no AI-judged findings from this period at all. Everything we later proposed for the backend had to be grounded in git history instead.</p>
+      <p>She also showed backend work looks nothing like frontend work: files there are routinely edited 15–30 times in normal migration work, where 7 was the high end on the frontend.</p>
+    </article>
+
+    <article class="person hero">
+      <h4>Kishan</h4>
+      <div class="meta">frontend · 24 Aug · 59 sessions</div>
+      <p>Ran across four separate checkouts. Every one of his 23 findings was distinct — more confirmation the prompt fix worked.</p>
+      <p>His run produced <strong>the single best finding of the whole exercise</strong>: a secret pasted into a session and left sitting in two files on disk. That's the same thing we'd caught once before, on a different person's machine, weeks earlier — the only finding anywhere that has recurred independently across people.</p>
+    </article>
+
+    <article class="person">
+      <h4>Abhishek</h4>
+      <div class="meta">frontend · 24 Aug · 145 sessions</div>
+      <p>The largest corpus and the most damaged run — which made it one of the most useful. His GitHub login had silently expired, and instead of saying so the tool reported "no pull requests found" for every branch he'd shipped that week. His expensive check hit the time limit and lost everything, which is how we found the save-as-you-go bug.</p>
+      <p>He also made the sharpest conceptual point of the exercise: <strong>"the AI caused rework" and "a safety gate did its job" are different things, and Hone can't tell them apart.</strong> Both his flagged sessions were a branch-naming rule correctly refusing a bad name.</p>
+    </article>
+
+    <article class="person">
+      <h4>Sampada</h4>
+      <div class="meta">backend · 26 Aug · 19 sessions</div>
+      <p>The only run where all four checks completed, on the smallest corpus. Sparse results — two findings from thirty AI calls — which is itself a useful contrast with Aarushi's 104.</p>
+      <p>She found two bugs by reading her own numbers skeptically: the rework measurement was counting edits made in <em>completely different folders</em> and attributing them to one branch, and a branch that merged in May was showing up in a "last 45 days" window. That second one affects every number in every run.</p>
+      <p>Her run also settled a design argument: one session had a design document edited 60 times and a source file edited 59 times. No single threshold separates those. A rule about <em>what kind of file it is</em> separates them instantly.</p>
+    </article>
+
+    <article class="person">
+      <h4>Aastha</h4>
+      <div class="meta">backend · 26 Aug · 44 sessions</div>
+      <p>Found the cause of Abhishek's mystery — a stale GitHub token overriding his login — in one pass.</p>
+      <p>She also caught the tool making a <strong>flatly false statement</strong>. On one branch it printed "no fix or revert commits — the follow-on activity was extension or maintenance, not defect repair." The only follow-on commit was a revert <em>of that exact branch</em>. The tool doesn't recognise the word "Revert", so the count was zero, so it produced a confident all-clear.</p>
+      <p>And she raised the one open question that could undo a lot of the above: our reports print "no finding (or the call failed)" as a single message, so we cannot tell a model that judged a session clean from a model whose call simply broke.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="s4">
+  <h2><span class="n">04</span>The checks, and what it adds up to</h2>
+
+  <h3>Every check, and whether it earns its place</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Check</th><th>What it looks for</th><th>Verdict</th></tr></thead>
+    <tbody>
+      <tr><td><strong>A</strong> repeated prompt</td><td>The same question asked twice in a row</td><td>Under-fires; misses duplicates that aren't back-to-back. Kept because it's nearly free</td></tr>
+      <tr><td><strong>B</strong> correction language</td><td>Phrases like "no", "that's wrong", "undo that"</td><td><strong>Broken both ways.</strong> Fires on "no idea" and "no problem"; misses "not what I asked for"</td></tr>
+      <tr><td><strong>C</strong> high tool volume</td><td>Lots of tool calls, no planning step</td><td>Fires on ~95% of sessions. Not a filter</td></tr>
+      <tr><td><strong>D</strong> no delegation</td><td>Expensive model doing mechanical work itself</td><td>Real, but hugely over-counted by our own prompt bug</td></tr>
+      <tr><td><strong>E</strong> file rework</td><td>Same file edited 4+ times</td><td>Mostly finds documents being drafted. Needs a rule about file type, not a bigger number</td></tr>
+      <tr><td><strong>F</strong> scope drift</td><td>Files changed you never mentioned</td><td><strong>The most selective check we have</strong> — 1 to 7 sessions per run</td></tr>
+      <tr><td><strong>G</strong> high iteration</td><td>25+ of your own messages in one session</td><td>Noisy on backend work</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Results, split at the engine change</h3>
+  <div class="note warn">
+    <span class="tag">Read this before quoting any number below</span>
+    <p>The engine changed materially on <strong>24 Aug, 15:23</strong>. The two blocks below are <strong>not comparable</strong> — different checks, and a different judge prompt. Comparing across the divide was the single most repeated mistake of this exercise.</p>
+  </div>
+
+  <div class="era before">
+    <div class="hd"><span>Before the fix</span><span class="cfg">checks A–D · contaminated judge prompt</span></div>
+    <div class="tw"><table>
+      <thead><tr><th>Developer</th><th>Repo</th><th class="num">Candidates</th><th class="num">haiku</th><th class="num">sonnet</th><th class="num">opus</th><th>Distinct</th></tr></thead>
+      <tbody>
+        <tr><td>Yugal</td><td>frontend</td><td class="num">10 / 11</td><td class="num">9</td><td class="num">2</td><td class="num">2</td><td>~0 useful</td></tr>
+        <tr><td>Lenvin</td><td>frontend</td><td class="num">17</td><td class="num">11</td><td class="num">7</td><td class="num">3</td><td>2 of 7</td></tr>
+        <tr><td>Yash</td><td>frontend</td><td class="num">37</td><td class="num">18</td><td class="num">17</td><td class="num">9</td><td>8 of 17</td></tr>
+        <tr><td>Abhishek <em>(partial)</em></td><td>frontend</td><td class="num">33</td><td class="num">15</td><td class="num">8</td><td class="num">12</td><td><strong>1 of 8</strong></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="cutband">engine change · 24 Aug 15:23 · checks E/F/G added, judge prompt cleaned</div>
+
+  <div class="era after">
+    <div class="hd"><span>After the fix</span><span class="cfg">checks A–G · neutral judge prompt</span></div>
+    <div class="tw"><table>
+      <thead><tr><th>Developer</th><th>Repo</th><th class="num">Candidates</th><th class="num">haiku</th><th class="num">sonnet</th><th class="num">opus</th><th>Distinct</th></tr></thead>
+      <tbody>
+        <tr><td>Yash <em>(re-run)</em></td><td>frontend</td><td class="num">36</td><td class="num">6</td><td class="num"><strong>15</strong></td><td class="num">4</td><td><strong>11–12 of 15</strong></td></tr>
+        <tr><td>Kishan</td><td>frontend</td><td class="num">49 / 59</td><td class="num"><strong>17</strong></td><td class="num">3</td><td class="num">3</td><td><strong>23 of 23</strong></td></tr>
+        <tr><td>Aastha</td><td>backend</td><td class="num">35 / 44</td><td class="num">8</td><td class="num">1</td><td class="num">0</td><td>5 themes of 8</td></tr>
+        <tr><td>Sampada</td><td>backend</td><td class="num">14 / 19</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td>n/a (n=1)</td></tr>
+        <tr><td>Abhishek</td><td>frontend</td><td class="num">114 / 145</td><td colspan="4"><em>lost to the time cap</em></td></tr>
+        <tr><td>Aarushi</td><td>backend</td><td class="num">91 / 104</td><td colspan="4"><em>never completed</em></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="note warn">
+    <p>⚠️ <strong>The three model columns may not mean what they appear to mean.</strong> The report prints every empty result as "no finding (or the call failed)", so a clean judgment and a broken call look identical. Only <strong>one run of nine</strong> ever verified from the logs that its calls actually succeeded.</p>
+  </div>
+
+  <h3>What was the same for every developer</h3>
+  <ul>
+    <li><strong>The first stage doesn't filter.</strong> It passed 74–91% of sessions through to the paid stage on every corpus, without exception. Adding the three new checks didn't change this.</li>
+    <li><strong>Documents get mistaken for rework.</strong> Four of four corpora showed design docs at the top of the file-rework list — one at 42 edits, one at 60.</li>
+    <li><strong>The same three measurement bugs recurred</strong> across different people and both repos.</li>
+    <li><strong>Two findings recurred across people.</strong> A secret pasted into a session (two developers) and the AI bypassing a safety gate without asking (three developers, both repos). Everything else appeared once.</li>
+  </ul>
+
+  <h3>What was different between developers</h3>
+  <ul>
+    <li><strong>Model results invert completely.</strong> On the same repo and engine, the mid-tier model flagged 42% of one engineer's sessions and 6% of another's. The cheap model did the reverse.</li>
+    <li><strong>Yield scales with corpus size.</strong> 11 sessions produced nothing usable; 37 and 59 produced real findings. The early "this doesn't work" verdict was a sample-size problem.</li>
+    <li><strong>Backend and frontend have different normal.</strong> 15–30 edits to one file is routine backend migration work and would be alarming on the frontend.</li>
+    <li><strong>Work profile decides what you find</strong> — and the tool has no notion of this.</li>
+  </ul>
+
+  <h3>First stage vs second stage</h3>
+  <p>The first stage is deterministic, free, and runs on everything. The second stage is one AI call per session and does all the actual discrimination. <strong>The first stage is a hard ceiling on the whole system</strong> — the second can only refine what the first passed, never recover what it dropped. Right now it barely is a ceiling: it lets nearly everything through, so we pay for AI calls on almost every session and get no filtering benefit.</p>
+  <blockquote><p>Aastha put the consequence best: our check for <em>false negatives</em> only examines sessions the first stage rejected — and since it rejects so few, that audit has never had more than a handful of sessions to look at. <strong>The audit is starved by design.</strong></p></blockquote>
+
+  <h3>What we ran, and what came back</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Measure</th><th class="num">Result</th></tr></thead>
+    <tbody>
+      <tr><td>Runs · developers · sessions · repos</td><td class="num">9 · 8 · ~400 · 2</td></tr>
+      <tr><td>Findings that were real and specific</td><td class="num">~12</td></tr>
+      <tr><td>Findings that recurred across people</td><td class="num">2</td></tr>
+      <tr><td><strong>Findings that reached a code reviewer</strong></td><td class="num"><strong>0</strong></td></tr>
+      <tr><td>Bugs found in Hone itself</td><td class="num">21 <span class="pill fixed">11 fixed</span> <span class="pill open">10 open</span></td></tr>
+    </tbody>
+  </table></div>
+  <div class="note bad">
+    <p><strong>The exercise found nearly twice as many defects in the measuring instrument as it found findings in the thing being measured.</strong> That is not a failure — it is what calibration is for. But it means every number produced before 26 August was measured with an instrument we now know was faulty in at least eight ways.</p>
+    <p>Worth noting who found what: <strong>seven of the ten open bugs were found by developers running it on their own history, not by us testing it</strong> — all in the last three days, as more people ran it. That rate has not levelled off.</p>
+  </div>
+
+  <h3>What to measure from here</h3>
+  <p>Flag counts are the wrong yardstick and we should stop quoting them. Better measures, in order of how much they'd tell us:</p>
+  <ol>
+    <li><strong>Did a code owner merge it?</strong> Nothing has been through the review gate. "A model wrote a plausible suggestion" is not "a reviewer agreed." This is the only measure that settles whether the tool is useful, and the one we have no data on.</li>
+    <li><strong>Is the quoted correction real?</strong> When the AI says the developer corrected it, check whether those words appear in the transcript. We already have one case where a model invented the quote and rated itself highly confident. Mechanical, and needs no new runs.</li>
+    <li><strong>Do models agree?</strong> Findings confirmed by two or three models were consistently the good ones. Use it as a confidence label — not a gate, since on one corpus it would have kept only 9%.</li>
+    <li><strong>Rework attributed by line, not by file.</strong> When we hand-checked 13 "rework" commits, only 5 were genuinely caused by the work they were blamed on.</li>
+    <li><strong>Distinct findings per run, not total.</strong> This is the measure that actually responded when we fixed the prompt.</li>
+  </ol>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="s5">
+  <h2><span class="n">05</span>Independent assessment</h2>
+  <div class="note">
+    <span class="tag">How this section was produced</span>
+    <p>Written by a separate model given the full evidence base — all nine run records, the working notes, and the engine code — and asked deliberately to find the next thing the team believes that the evidence does not support. <strong>It found one, and it is real:</strong> the calibration-prompt defect below was verified in code before publishing. Where it disagrees with sections 1–4, the disagreement is left standing rather than reconciled.</p>
+  </div>
+
+  <h3>Part A — Is this a good implementation?</h3>
+  <p><strong>Verdict: the engineering discipline is good; the instrument is not yet trustworthy.</strong> Nearly every number this system emitted was materially wrong the first time someone checked it, and the team's own docs — commendably — record most of that. But the checking is not done.</p>
+
+  <h4>What genuinely works</h4>
+  <p>The architecture held its core privacy property throughout: nothing left any machine without a developer's approval, across nine runs and eight developers. The prompt-contamination discovery was a real methodological win. And two findings have genuine cross-developer recurrence — <strong>secrets pasted into transcripts</strong> and <strong>gate bypass without asking</strong>. Both convert directly into cheap hooks.</p>
+  <p>The post-merge rework hand-check is honest, careful work — it is also, tellingly, <strong>the only output that led to shipped PRs, and it was produced by a human reading 13 diffs, not by the pipeline.</strong></p>
+
+  <h4>What doesn't work</h4>
+  <ul>
+    <li><strong>The first stage is not a filter</strong> — 74–91% pass-through in every corpus.</li>
+    <li><strong>Every rework number the arc builder published is wrong or unverifiable.</strong> Only 5 of 13 attributed fix commits were actually introduced by the PRs investigated — one PR's count was 6 attributed, <strong>0 real</strong>. Churn includes files from entirely different clones. A revert of the exact PR under measurement was classified "unclassified", producing an affirmative false statement.</li>
+  </ul>
+
+  <div class="note bad">
+    <span class="tag">The live defect the team had not found</span>
+    <p><strong>The calibration harness and the production engine run different judge prompts.</strong> Since the contamination fix, production passes the neutral session-scale counts the docs describe as the resolution. The calibration tool every model-comparison number comes from <strong>never passes them</strong> — it still passes the pre-fix arguments, which the function now silently drops.</p>
+    <ol class="tight">
+      <li><strong>All post-fix data was collected on the exact "over-corrected" configuration</strong> the docs say makes heavy-rework sessions return "no finding".</li>
+      <li>It explains the recurring mystery — "all three models returned no finding on sessions where every check fired." <strong>The judge literally never saw the edit counts.</strong></li>
+      <li>The comparison numbers do not measure the configuration production would run.</li>
+    </ol>
+    <p>This is the same failure mechanism as the original contamination — a prompt change the team believed was in effect and wasn't — found by reading code the docs said had been fixed.</p>
+  </div>
+
+  <h4>Numbers that should not be quoted in meetings</h4>
+  <div class="tw"><table>
+    <thead><tr><th>Claim</th><th>Why not</th></tr></thead>
+    <tbody>
+      <tr><td>"17 rework commits on #9566, 5 on #9748"</td><td>Real: 4–5 and <strong>0</strong></td></tr>
+      <tr><td>Any churn or rework figure</td><td>Cross-clone attribution, hub-file overlap, the revert bug</td></tr>
+      <tr><td>"Distinct-yield rose 47% → 73%/100%"</td><td>Directionally real but confounded — the same commit changed the prompt <em>and</em> anchor selection, and the 100% figure pools three models where the earlier ones count one</td></tr>
+      <tr><td>Any model flag-rate table</td><td>Can't decide anything, and ran on the wrong prompt</td></tr>
+      <tr><td>"0 unclassified — the classifier held up"</td><td>Refuted: 12 unclassified on the same repo</td></tr>
+    </tbody>
+  </table></div>
+
+  <p><strong>What the data cannot support:</strong> whether any finding survives code-owner review; true recall; the model choice; the existence of complaint #1 in these corpora; anything about AI-vs-human code quality. Note also a mild self-measurement contamination — <strong>the calibration exercise is itself in the corpus.</strong> One recall audit flagged our own pasted instructions, and one run's largest arc was the harness work itself.</p>
+
+  <h3>Part B — The daily auto-capture design</h3>
+  <p><strong>Runtime.</strong> The daily <em>increment</em> is fine — developers here produce ~1–5 sessions/day, so a daily sweep is a handful of calls and minutes of background work. What is not fine is everything that isn't steady state: the first run is a backfill, and any gap becomes one. A backfill at this throughput has already been fatally interrupted twice in nine runs, and there is no per-sweep budget cap anywhere in the code.</p>
+
+  <div class="note warn">
+    <span class="tag">The windowing bug inverts at daily cadence</span>
+    <p>For a 30-day window the failure is including resumed ancient sessions. For a <em>daily</em> window, "last touched" is the least-wrong it ever gets — but the real failure flips: <strong>any session spanning multiple days keeps a fresh timestamp and is re-assessed in full every day it lives</strong>, and there is no "already assessed" ledger anywhere. A week-long session gets seven whole-session judgments. It would also be <strong>judging sessions mid-flight</strong> — assessing unfinished work before the developer has corrected it.</p>
+  </div>
+
+  <p><strong>The first stage not filtering sets the economics.</strong> At ~80% pass-through, the AI tier isn't a refinement stage, it's the entire filter, paid per call. The dollar cost is small — low single-digit dollars per developer per month, tens across a 20-engineer org. The real economics are downstream: <strong>200–600 findings per month org-wide hitting human review gates</strong>, produced by a model whose only measured head-to-head produced one grounded finding and one fabricated one, with an acceptance rate that is entirely unmeasured. This is precisely the review-volume risk the ERD flags as its biggest cross-cutting risk.</p>
+
+  <p><strong>Silent failure is indistinguishable from a quiet day.</strong> Timeouts, auth expiry and malformed responses all fail closed to "no finding". An unattended daily process with this property will eventually run dead for weeks without anyone noticing — the same bug class already observed twice in the arc builder.</p>
+
+  <p><strong>Is daily even the right trigger? No.</strong> The architecture already specifies something better: event triggers that fire when work <em>completes</em>, plus a content-threshold digest. A calendar sweep assesses whatever files were warm, including half-done sessions, and adds nothing the triggers don't already provide except coverage of sessions that never commit — better served by the existing checkpoint skill.</p>
+
+  <div class="note bad">
+    <span class="tag">Recommendation</span>
+    <p><strong>Do not ship the daily sweep yet.</strong> What must be true first, in order:</p>
+    <ol class="tight">
+      <li><strong>Windows derive from record timestamps, and a per-session assessed high-water mark exists</strong>, so no session is paid for twice and none is judged before it goes idle.</li>
+      <li><strong>Calibration and production are one code path</strong>, with at least one corpus re-run on the real prompt — the current evidence base does not describe the thing being shipped.</li>
+      <li><strong>A hard per-sweep budget</strong>, so backfills degrade instead of dying.</li>
+      <li><strong>Failure is visible</strong> — "no finding" vs "call failed" distinguished everywhere a human looks, and the sweep refuses to run loudly on auth failure.</li>
+      <li><strong>One batch has gone through review to a code-owner decision, and the acceptance rate is known.</strong> Industrialising production of an artifact nobody has yet accepted is the wrong order.</li>
+    </ol>
+    <p>Two further conditions: developers should <strong>explicitly opt in</strong> rather than get this by default; and note the irony that the sweep's own best finding is that transcripts contain secrets, while the redaction step is seven patterns that would not reliably have caught the secret actually found.</p>
+  </div>
+
+  <h3>Part C — What to do differently</h3>
+  <p>Two lists, because the docs conflate them: fixes that make the numbers <strong>true</strong>, and moves that make the tool <strong>worth running</strong>.</p>
+
+  <h4>Correctness — before trusting any further measurement</h4>
+  <ol>
+    <li><strong>Unify the two judge-call paths</strong> and re-run one corpus. This may dissolve the "the AI discards heavy-rework sessions" mystery without any anchor-selection work.</li>
+    <li><strong>Window on session dates, not file timestamps, with an assessed-session ledger.</strong></li>
+    <li><strong>Stop publishing rework and churn numbers until attribution is line-level.</strong> Even fixed, file-level overlap has a demonstrated ~62% false-attribution rate. Present post-merge activity as a <em>pointer for human diff-reading</em> — the use that actually produced value — never as a metric.</li>
+    <li><strong>Run the "does the quoted correction appear in the transcript" check</strong> across all recorded findings. Free, retroactive, and the only model evidence worth having until the gate exists.</li>
+    <li><strong>Make judge failure visible</strong> in every report a human reads.</li>
+  </ol>
+
+  <h4>Usefulness — what justifies the project</h4>
+  <ol>
+    <li><strong>Ship the two hooks now.</strong> Secrets-in-transcript and gate-bypass-without-asking need no pipeline, no model choice, no thresholds. And note the uncomfortable implication honestly: <strong>the exercise's two best findings and all three shipped PRs came from occasional deep runs plus human synthesis — none required continuous capture.</strong></li>
+    <li><strong>Push one batch through the full gate before any further calibration.</strong> The acceptance rate is the metric the whole design exists to serve, it is currently zero-data, and every week of tuning before measuring it is potentially optimising the wrong stage.</li>
+    <li><strong>Give the rework check a file-kind carve-out</strong> — but keep Aastha's counter-example in view: real source files hit 40× too. Carve out, don't delete.</li>
+    <li><strong>Reposition the product as a periodic instrument, not a daemon.</strong> A monthly or on-demand deep run per developer — bounded, attended, read by a human — matches every success this project has actually had. Continuous auto-capture is a later bet that should be <em>earned</em> by a measured acceptance rate, not assumed.</li>
+    <li><strong>Delete or freeze:</strong> the correction-language patterns; further flag-rate model comparisons; the correction-proximity machinery, until fix #1 rules out the simpler explanation. Treat the two broad checks as precision tunables, since they are what starves the recall audit.</li>
+    <li><strong>Update the ERD to match the tool</strong> — unrequested consequential actions, not "prompting quality" — <strong>before this document is used to justify continued investment</strong>, so the investment is judged against what the tool actually does.</li>
+  </ol>
+</section>
+
+</main>
+
+<footer class="wrap">
+  <p>Source: <code>docs/hone-calibration/CONSOLIDATED.md</code> · per-developer detail in <code>docs/hone-calibration/developer-runs/</code> · working notes in <code>docs/hone-calibration/README.md</code></p>
+  <p>Fleek · Tech Velocity Initiative · Pillar 2 (Coding Harness) · AI-1</p>
+</footer>
+
+</body>
+</html>

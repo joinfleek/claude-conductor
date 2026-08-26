@@ -49,6 +49,15 @@ wrote that answer back. A pattern we had spent three days treating as a discover
 codebase was substantially manufactured by our own prompt. Removing it is the single biggest
 correctness fix of the exercise, and we have direct proof it worked — see Yash below.
 
+**But only half of that fix ever reached the tool we tested with.** The repair had two parts:
+stop telling the judge what to look for, and *start* telling it the session's basic numbers (how
+many edits, how many turns) that a short excerpt can't show. The first half took effect
+everywhere. The second half was wired into the production path only — the calibration tool never
+passed those numbers, and still doesn't. This was found on the last day of the exercise, by a
+review that read the code rather than the documentation, and it means every measurement we took
+after the fix was taken on a half-fixed configuration. It is the single most important thing in
+this document that is still outstanding. See §5.
+
 **Repo identity from the git remote, not the folder name.** One engineer's checkout was in a
 folder called `fe-apps`. The tool would have worked right up to the moment he approved a
 finding, then crashed. Now it asks git what the repo is.
@@ -226,8 +235,8 @@ feature-arc reconstruction from git, the three-model comparison, and the false-n
 - **Findings that recurred across people:** two.
 - **Findings that reached a code reviewer:** **zero, until three PRs were raised on the backend
   last week — and those were grounded in git history, not in Hone's own findings.**
-- **Bugs found in Hone itself:** twenty. **Eleven fixed, nine still open** — two of those left
-  open deliberately (checks A and B), seven genuinely outstanding.
+- **Bugs found in Hone itself:** twenty-one. **Eleven fixed, ten still open** — two of those left
+  open deliberately (checks A and B), eight genuinely outstanding.
 
 That last line is worth sitting with. **The exercise found nearly twice as many defects in the
 measuring instrument as it found findings in the thing being measured.** That is not a failure —
@@ -278,7 +287,177 @@ how much they'd actually tell us:
 | 18 | Report can't distinguish a clean judgment from a failed call | Aastha | **open** |
 | 19 | Rework detail never printed in the report that computes it | Yash / Sampada | **open** |
 | 20 | Commit counts disagree with edit counts on some branches | Abhishek / Sampada | **open, undiagnosed** |
+| 21 | **Calibration tool and production run different judge prompts** | independent review | **open — most consequential** |
 
 Worth noting who found what: **items 14–20 were all found by developers running it on their own
 history, not by us testing it.** Seven of the nine open bugs surfaced in the last three days of
-the exercise, as more people ran it. That rate has not levelled off.
+the exercise, as more people ran it. That rate has not levelled off — item 21 was found on the
+last day, by reading code the documentation said had already been fixed.
+
+---
+
+## 5. Independent assessment
+
+*This section was written by a separate model given the full evidence base — all nine run
+records, the working notes, and the engine code — and asked deliberately to look for the next
+thing the team is believing that the evidence does not support. It found one, and it is real:
+the finding about the calibration prompt below was verified in code before this was published,
+and it invalidates more than any bug found by a developer.*
+
+*Where it disagrees with sections 1–4, the disagreement is left standing rather than reconciled.*
+
+### Part A — Is this a good implementation?
+
+**Verdict: the engineering discipline is good; the instrument is not yet trustworthy.** Nearly
+every number this system emitted was materially wrong the first time someone checked it, and the
+team's own docs — commendably — record most of that. But the checking is not done: at least one
+significant instrument defect was still live and undocumented as of this writing, and it undercuts
+several conclusions the team currently treats as settled.
+
+**What genuinely works.** The pipeline architecture held its core privacy property throughout:
+nothing left any machine without a developer's approval, across nine runs and eight developers.
+The prompt-contamination discovery was a real methodological win, correctly diagnosed and fixed.
+And the exercise produced two findings with genuine cross-developer recurrence — **secrets pasted
+into transcripts** (two developers, weeks apart) and **`--no-verify` used to bypass commit gates
+without asking** (three developers, both repos). Both convert directly into cheap hooks.
+
+Finally, the post-merge rework hand-check is honest, careful work — it is also, tellingly, **the
+only output that led to shipped PRs, and it was produced by a human reading 13 diffs, not by the
+pipeline.**
+
+**What doesn't work.**
+
+- **Tier 1 is not a filter.** 74–91% pass-through in every corpus. C fires on ~95% of candidates;
+  B fires on ~57% while demonstrably missing real corrections and firing on "no problem". A misses
+  the literal duplicate it was built for. E is substantially a documentation-churn detector.
+- **Every rework number the arc builder has published is wrong or unverifiable.** Only 5 of 13
+  attributed fix commits were actually introduced by the PRs under investigation — PR #9748's
+  count was 6 attributed, **0 real**. Churn includes files from entirely different clones. A
+  revert of the exact PR under measurement was classified "unclassified", producing an
+  affirmative false statement.
+
+**The live defect the team had not found: the calibration harness and the production engine run
+different judge prompts.** Since the contamination fix, production (`assess.mjs:122`) passes
+`sessionFacts` — the neutral session-scale counts the docs describe as the resolution. The
+calibration tool every model-comparison number comes from (`tier2-compare.mjs:114`) **never passes
+them** — it still passes the pre-fix arguments, which the function now silently drops. Three
+consequences:
+
+1. **All post-fix data was collected on the exact "over-corrected" configuration** the docs say
+   makes heavy-rework sessions return "no finding".
+2. The recurring mystery — "all three models returned no finding on sessions where every heuristic
+   fired" — is at least substantially this bug. **The judge literally never saw the edit counts.**
+3. The comparison numbers do not measure the configuration production would run.
+
+This is the same failure mechanism as the original contamination — a prompt change the team
+believed was in effect and wasn't — found by reading code the docs said had been fixed.
+
+**Numbers that should not be quoted in meetings:**
+
+- *"17 rework commits on PR #9566, 5 on #9748."* Real: 4–5 and 0.
+- *Any arc-builder churn or rework figure.*
+- *"Distinct-yield rose 47% → 73%/100%."* Directionally real but confounded: the same commit
+  changed the prompt **and** anchor selection, and the 100% figure pools three models where the
+  earlier figures count one. On a corpus where only 2 of 49 candidates had cross-model agreement,
+  "all titles distinct" is as consistent with uncorrelated noise as with quality.
+- *Any model flag-rate table.*
+- *"0 unclassified — the classifier held up."*
+
+**What the data cannot support:** whether any finding survives a code-owner review (nothing has
+gone through the gate); true recall; the model choice; the existence of complaint #1 in these
+corpora; anything about AI-vs-human code quality. Note also a mild self-measurement contamination
+— **the calibration exercise is itself in the corpus**: one recall audit flagged our own pasted
+instructions, and one run's largest arc was the harness work itself.
+
+### Part B — The daily auto-capture design
+
+**Runtime.** The daily *increment* is fine — developers here produce ~1–5 sessions/day, so a daily
+sweep is a handful of calls and minutes of background work. What is not fine is everything that
+isn't steady state: the first run is a backfill, and any gap (vacation, a week of silent failures)
+becomes one. A backfill at this throughput has already been fatally interrupted twice in nine
+runs, and there is no per-sweep budget cap anywhere in the code.
+
+**The windowing bug is worse at daily cadence, and inverts.** For a 30-day window the failure is
+including resumed ancient sessions. For a *daily* window, "last touched" is the least-wrong it
+ever gets — but the real failure flips: **any session spanning multiple days keeps a fresh
+timestamp and is re-assessed in full every day it lives**, and there is no "already assessed"
+ledger anywhere. A week-long session gets seven whole-session judgments, each generating findings
+whose IDs shift as the transcript grows, so the buffer fills with near-duplicates that only a
+0.5-similarity text check might catch. It would also be **judging sessions mid-flight** — assessing
+unfinished work before the developer has corrected it.
+
+**Tier 1 not filtering sets the economics.** At ~80% pass-through, Tier 2 isn't a refinement stage,
+it's the entire filter, paid per call. The dollar cost is small — low single-digit dollars per
+developer per month, tens of dollars across a 20-engineer org (estimated; nobody has measured it).
+The real economics are downstream: at observed rates, **200–600 findings per month org-wide hitting
+human review gates**, produced by a model whose only measured head-to-head produced one grounded
+finding and one fabricated one, with an acceptance rate that is entirely unmeasured. This is
+precisely the review-volume risk the ERD flags as its biggest cross-cutting risk.
+
+**Silent failure is indistinguishable from a quiet day.** Timeouts, auth expiry and malformed
+responses all fail closed to "no finding". An unattended daily process with this property will
+eventually run dead for weeks without anyone noticing — the same bug class already observed twice
+in the arc builder.
+
+**Is daily even the right trigger? No.** The architecture already specifies something better:
+event triggers that fire when work *completes*, plus a content-threshold digest. A calendar sweep
+assesses whatever files were warm, including half-done sessions, and adds nothing the triggers
+don't already provide except coverage of sessions that never commit — better served by the
+existing checkpoint skill.
+
+**Recommendation: do not ship the daily sweep yet.** What must be true first, in order:
+
+1. **Windows derive from record timestamps, and a per-session assessed high-water mark exists**, so
+   no session is paid for twice and none is judged before it goes idle.
+2. **Calibration and production are one code path**, with at least one corpus re-run on the real
+   prompt — the current evidence base does not describe the thing being shipped.
+3. **A hard per-sweep budget**, so backfills degrade instead of dying.
+4. **Failure is visible** — "no finding" vs "call failed" distinguished everywhere a human looks,
+   and the sweep refuses to run loudly on auth failure.
+5. **One batch has gone through review to a code-owner decision, and the acceptance rate is
+   known.** Industrialising production of an artifact nobody has yet accepted is the wrong order.
+
+Two further conditions: developers should **explicitly opt in** rather than get this by default;
+and note the irony that the sweep's own best finding is that transcripts contain secrets, while
+the redaction step is seven regexes that would not reliably have caught the secret actually found.
+
+### Part C — What to do differently
+
+Two lists, because the docs conflate them: fixes that make the numbers **true**, and moves that
+make the tool **worth running**.
+
+**Correctness — before trusting any further measurement:**
+
+1. **Unify the Tier 2 call path** and re-run one corpus. This may dissolve the "Tier 2 discards
+   heavy-rework sessions" mystery without any anchor-selection work.
+2. **Window on session dates, not file timestamps, with an assessed-session ledger.**
+3. **Stop publishing rework and churn numbers until attribution is line-level.** Even fixed,
+   file-level overlap has a demonstrated ~62% false-attribution rate. Present post-merge activity
+   as a *pointer for human diff-reading* — the use that actually produced value — never as a metric.
+4. **Run the mechanical "does the quoted correction appear in the transcript" check** across all
+   recorded findings. Free, retroactive, and the only model evidence worth having until the gate
+   exists.
+5. **Make Tier 2 failure visible** in every report a human reads.
+
+**Usefulness — what justifies the project:**
+
+1. **Ship the two hooks now.** Secrets-in-transcript and gate-bypass-without-asking need no
+   pipeline, no model choice, no thresholds. And note the uncomfortable implication honestly:
+   **the exercise's two best findings and all three shipped PRs came from occasional deep runs
+   plus human synthesis — none required continuous capture.**
+2. **Push one batch through the full gate before any further calibration.** The acceptance rate is
+   the metric the whole design exists to serve, it is currently zero-data, and every week of
+   heuristic tuning before measuring it is potentially optimising the wrong stage.
+3. **Give the rework check a file-kind carve-out** — but keep run 9's counter-example in view:
+   real source files hit 40× too. Carve out, don't delete.
+4. **Reposition the product as a periodic instrument, not a daemon.** A monthly or on-demand deep
+   run per developer — bounded, attended, read by a human — matches every success this project has
+   actually had. Continuous auto-capture is a later bet that should be *earned* by a measured
+   acceptance rate, not assumed.
+5. **Delete or freeze:** the correction-language patterns (wrong in both directions — rebuild from
+   the real phrases or drop it); further flag-rate model comparisons; the correction-proximity
+   machinery, until fix #1 rules out the simpler explanation. Treat the two broad checks as
+   precision tunables, since they are what starves the recall audit.
+6. **Update the ERD to match the tool** — unrequested consequential actions, not "prompting
+   quality" — **before this document is used to justify continued investment**, so the investment
+   is judged against what the tool actually does.

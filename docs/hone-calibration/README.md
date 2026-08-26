@@ -110,6 +110,47 @@ Heuristics should decide *which* evidence to send, never *what to conclude about
 
 ---
 
+## 4a. The same mistake, a second time: the fix was never in the calibration path
+
+**Found 2026-08-26 by an independent review, verified in code. This is the most consequential
+open defect in the project.**
+
+The resolution described immediately above — pass neutral `sessionFacts` so the judge can see
+session-scale numbers a six-turn excerpt cannot show — **was only ever wired into production.**
+
+| Path | Call site | Passes |
+|---|---|---|
+| Production sweep | `assess.mjs:122` | `{ excerpt, trigger, sessionFacts }` ✅ |
+| **Every calibration number we have** | `tier2-compare.mjs:114` | `{ excerpt, heuristics, anchorDetail, trigger, model, effort }` ❌ |
+
+`invokeTier2`'s signature is `{ excerpt, trigger, sessionFacts, model, effort }`
+(`tier2.mjs:85`). JavaScript destructuring discards unknown keys without error, so
+`heuristics` and `anchorDetail` are silently dropped **and `sessionFacts` is `undefined`** —
+which makes `tier2.mjs:59` omit the "Measured facts about the full session" block entirely.
+
+### Three consequences
+
+1. **Runs 5, 6, 8 and 9 were all collected on the "over-corrected" prompt** — the configuration
+   this very section says makes heavy-rework sessions return "no finding". Not the fixed one.
+2. **It explains the mystery filed as next-steps item 14.** "All three models returned no finding
+   on the sessions where every heuristic fired" was read as an anchor-selection problem. It
+   probably isn't: the judge was never shown the edit counts. Given a six-turn excerpt containing
+   one ordinary edit, "no finding" was the correct answer to the question actually asked.
+   [Run 5](developer-runs/05-yash-fleek-monorepo-rerun.md) has been corrected.
+3. **No comparison number describes the configuration production would run.**
+
+### Why this one stings
+
+It is **the same failure mechanism as the contamination above** — believing a prompt change was
+in effect when it wasn't — caught only by someone reading code that the documentation stated had
+been fixed. The docs were the source of the false confidence.
+
+**Fix before any further measurement:** have `tier2-compare.mjs` build its arguments exactly as
+`assess.mjs` does, delete the two dead arguments, and re-run one corpus. Deliberately not applied
+yet — it changes what the tool produces, and the re-run is a decision to make explicitly.
+
+---
+
 ## 5. Two real defects in the heuristics
 
 **B does not detect corrections. It detects the word "no".** The first pattern is
@@ -430,49 +471,54 @@ number per model.
 2. ~~Delete the routing-rule worked example~~ — **done**
 3. ~~Make `tier2-compare.mjs` write incrementally~~ — **done 2026-08-26**; it wrote once at the end,
    so any run stopped at a time cap lost everything (run 7)
-4. **Ship the secret-in-transcript hook** — §7. Best-evidenced finding, independent of everything else
-5. **Make `arc-builder.mjs` refuse to run without `gh` auth** — it currently reports
+4. **Unify the Tier 2 call path (§4a)** — `tier2-compare.mjs:114` doesn't pass `sessionFacts`;
+   `assess.mjs:122` does. Every comparison number was collected on a prompt production doesn't
+   run. **Do this before trusting any further measurement**, and re-run one corpus after; it may
+   dissolve item 13 outright
+5. **Ship the secret-in-transcript hook** — §7. Best-evidenced finding, independent of everything else
+6. **Make `arc-builder.mjs` refuse to run without `gh` auth** — it currently reports
    `inactive-no-pr` for every arc when auth fails, which is a *plausible false answer*, not an
    error (runs 7 and 9). **Root cause found in run 9: a stale `GITHUB_TOKEN` env var shadowing
    `gh`'s own credentials** (401); `env -u GITHUB_TOKEN` is the workaround. Cheapest fix with the
    worst current failure mode
-6. **Classify `Revert "…"` and non-conventional fix titles as rework** — 12 missed on one corpus,
+7. **Classify `Revert "…"` and non-conventional fix titles as rework** — 12 missed on one corpus,
    and in one case the miss caused the report to print an affirmative "no defect repair" about an
    arc whose only follow-up was a revert of itself (run 9, §8)
-7. **Make Tier 2's report distinguish a clean judgment from a failed call** — `tier2.mjs` already
+8. **Make Tier 2's report distinguish a clean judgment from a failed call** — `tier2.mjs` already
    logs five distinct outcomes to `hone.log`; only the renderer collapses them to
    `"no finding (or Tier 2 call failed)"`. Until this lands, no per-model count in §6 or §10 is
    trustworthy without cross-checking the log by hand (run 9)
-8. **Scope arc-builder's churn to the repo** — `heuristics.mjs:170` skips out-of-repo files; the
+9. **Scope arc-builder's churn to the repo** — `heuristics.mjs:170` skips out-of-repo files; the
    churn path in `arc-builder.mjs:197` does not, so E and arc-builder disagree by construction and
    both call the result "edits." Run 8's biggest arc attributes a 345× file from a *different
    clone*. Two lines, and it invalidates every churn figure produced so far
-9. **Window on session date, not file mtime** — `resolve-transcript.mjs:27` builds every `--days N`
+10. **Window on session date, not file mtime** — `resolve-transcript.mjs:27` builds every `--days N`
    window from `statSync().mtimeMs`, so resuming an old session pulls it into a "last 14 days"
    run. A branch merged 2026-05-22 appeared in a 45-day window (run 8). **Affects every check in
    the system**; the parser already reads record timestamps
-10. **Verify `correctionGiven` against the transcript** — mechanical, needs no new runs, and turns
+11. **Verify `correctionGiven` against the transcript** — mechanical, needs no new runs, and turns
    §10's n=1 fabrication observation into a per-model precision number
-11. **Give E a file-kind carve-out** — plan/ERD docs dominate its top hits on three corpora across
+12. **Give E a file-kind carve-out** — plan/ERD docs dominate its top hits on three corpora across
    both repos. A higher threshold alone cannot fix this: run 8 has an ERD at 60 edits and a source
    file at 59 in the same session (§6)
-12. **Surface E's anchor `detail` in `pilot-run.mjs`'s report** — the file and edit count exist in
+13. **Surface E's anchor `detail` in `pilot-run.mjs`'s report** — the file and edit count exist in
    the anchor objects and never reach the report; every developer has had to dig them out of
    arc-builder (run 5)
-13. **Investigate Tier 2 discarding the heaviest-rework sessions** — all three models returned
-   "no finding" on three sessions where all seven heuristics fired (run 5). E finds them; Tier 2
-   throws them away. Likely an anchor-selection problem — §9's correction-proximity design was
-   built for exactly this and is still unbuilt
-14. **Fix A's adjacency bug** — non-consecutive duplicates currently invisible
-15. **Add 2-of-3 model agreement as a confidence *label*** — free, but it keeps ~9% of findings,
+14. **Investigate Tier 2 discarding the heaviest-rework sessions** — all three models returned
+   "no finding" on three sessions where all seven heuristics fired (run 5). ⚠️ **Do item 4
+   first: §4a probably explains this entirely** — the judge was never passed the edit counts in
+   any calibration run. Only if it survives the unified call path is this an anchor-selection
+   problem worth building §9's correction-proximity design for
+15. **Fix A's adjacency bug** — non-consecutive duplicates currently invisible
+16. **Add 2-of-3 model agreement as a confidence *label*** — free, but it keeps ~9% of findings,
     so do not make it a gate (§6)
-16. **Add a capability/access-probing category** — three independent recall audits surfaced
+17. **Add a capability/access-probing category** — three independent recall audits surfaced
     adjacent classes (*"what do you need to open"*, *"the other session hanged"*,
     `[Request interrupted by user]`, husky pre-push rejections). It is the only friction class
     whose fix is a **tooling change rather than another rule doc**. **Prerequisite:** separate
     *harness caused rework* from *policy gate fired as designed* (run 7) — otherwise widening
     the patterns manufactures findings out of guardrails working correctly
-17. **Re-run the pre-cutoff corpora on the fixed engine** — Yugal, Lenvin and Abhishek's Tier 2
+18. **Re-run the pre-cutoff corpora on the fixed engine** — Yugal, Lenvin and Abhishek's Tier 2
     numbers are all pre-fix and not comparable to runs 5 and 6
 
 ### Operational gotchas that have already cost real time
