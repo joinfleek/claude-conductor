@@ -111,8 +111,12 @@ stdout only. Every other script writes into `.claude/hone/reports/`. She had to 
 
 ## Check 3 — the sparsest signal measured, and the most informative single finding
 
-10 sessions in the 14-day window. **haiku 1 · sonnet 1 · opus 0.** 27 of 30 calls returned
-nothing.
+10 sessions in the 14-day window. **haiku 1 · sonnet 1 · opus 0** — so **28 of 30 calls returned
+nothing.**
+
+(Her summary says 27 of 30. The raw report contains exactly two findings — sonnet on `df4a21e7`,
+haiku on `01b8f472` — so 28 is the number. Immaterial to any conclusion, corrected because the
+file is the source and the paraphrase isn't.)
 
 Her framing is the right one: *"on my session mix the signal is very sparse, which may be the
 useful contrast against Aarushi's run."*

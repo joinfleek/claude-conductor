@@ -1,7 +1,12 @@
 # Hone calibration — consolidated findings
 
 Everything learned from building Hone (Fleek's AI-1, Tech Velocity Initiative Pillar 2) and
-running it against six developers' real Claude Code session history, 2026-08-19 → 2026-08-26.
+running it against **eight developers' real Claude Code session history across nine runs**,
+2026-08-19 → 2026-08-26.
+
+> **Want the summary rather than the working notes? Read [`CONSOLIDATED.md`](CONSOLIDATED.md).**
+> It covers the same ground in plain language, front to back, and ends with an independent
+> assessment. This file is the detailed record behind it.
 
 Per-developer raw results live in [`developer-runs/`](developer-runs/). This file is the
 synthesis: what was built, what the data actually said, what turned out to be wrong, and what
@@ -135,7 +140,7 @@ Both left unfixed by explicit decision. Documented so nobody re-derives them.
 
 ---
 
-## 6. What the seven runs actually showed
+## 6. What the nine runs actually showed
 
 Full detail per developer in [`developer-runs/`](developer-runs/).
 
@@ -158,9 +163,16 @@ A–G, neutral prompt. Never quote a pre- and a post-cutoff number side by side.
 |---|---|---|---|---|---|---|
 | [Yash re-run](developer-runs/05-yash-fleek-monorepo-rerun.md) | fleek-monorepo | 36 | **6** | **15** | **4** | **11–12 of 15** |
 | [Kishan](developer-runs/06-kishan-fleek-monorepo.md) | fleek-monorepo | 49 / 59 | **17** | **3** | **3** | **23 of 23** |
+| [Aastha](developer-runs/09-aastha-fleek-api.md) | fleek-api | 35 / 44 (80%) | **8** | **1** | **0** | 5 themes of 8 |
 | [Sampada](developer-runs/08-sampada-fleek-api.md) | fleek-api | 14 / 19 (74%) | **1** | **1** | **0** | n/a (n=1) |
 | [Abhishek](developer-runs/07-abhishek-fleek-monorepo.md) | fleek-monorepo | 114 / 145 (79%) | *Tier 2 lost to time cap* | | | — |
 | [Aarushi](developer-runs/04-aarushi-fleek-api.md) | fleek-api | 91 / 104 (87.5%) | *Tier 2 never completed* | | | — |
+
+⚠️ **The haiku/sonnet/opus columns may not mean what they appear to mean.** The report renders
+every null as `"no finding (or Tier 2 call failed)"`, so a clean judgment and a broken call are
+indistinguishable in it (run 9). Only [run 6](developer-runs/06-kishan-fleek-monorepo.md) verified
+against `hone.log` that its calls actually succeeded. Until Aastha's and Sampada's logs come back,
+treat low sonnet/opus counts as **unverified**.
 
 ⚠️ **Every `--days N` figure above is approximate.** The window filters on transcript file
 *mtime*, not session date (see §11 gotchas) — a resumed old session lands inside a "last 14 days"
@@ -175,10 +187,23 @@ from a 10-session sample — far too small (a 95% CI on 2/10 spans roughly 3–5
 same developer, same repo, same window, engine the only variable — and the delegation cluster went
 **9 → 0**.
 
-**Tier 1 does not filter.** 79–91% flag rates across every corpus measured. C alone fires on ~95%
+**Tier 1 does not filter.** 74–91% flag rates across every corpus measured. C alone fires on ~95%
 of candidates. The OR-gate over broad heuristics passes nearly everything through, so Tier 2 does
-all the discrimination and pays per call for it. Adding E/F/G did not change this: Abhishek's
-79% is the *lowest* rate recorded and still passes four sessions in five.
+all the discrimination and pays per call for it. Adding E/F/G did not change this: Sampada's
+74% is the *lowest* rate recorded and still passes three sessions in four.
+
+**And the consequence is worse than "we pay for too many calls."** [Run 9](developer-runs/09-aastha-fleek-api.md)
+articulated it best:
+
+> *"Only 3 sessions were eligible because Tier 1 already flags 35/44 (80%) as candidates — recall
+> is basically capped by C-unreflected-volume (27/44) and D-frontier-no-delegation (24/44), which
+> fire on most working sessions. **Those two look more like 'precision' tunables than recall
+> risks.**"*
+
+The recall audit only examines sessions Tier 1 *rejected*. Because Tier 1 rejects so few, the
+audit has never had more than a handful to look at — samples of 2, 3, 7, 10, 16 and 17 across the
+whole exercise. **The audit is structurally starved by C and D**, and running it more will not
+help; the fix is upstream.
 
 **Cross-model agreement tracks quality almost perfectly** — every high-value finding was found
 independently by 2–3 models, every repetitive "delegate more" restatement by exactly one — but it
@@ -217,7 +242,12 @@ The best output of the whole exercise, all from Yash's run:
    > the skill has accumulated `STOP`/`MANDATORY`/`NEVER` prose, which is *"the accumulated
    > artifact of past corrections — each emphatic clause represents a previously violated
    > constraint now being re-stated with more force."*
-2. **`--no-verify` used to bypass a failing pre-commit gate without asking**
+2. **`--no-verify` used to bypass a failing gate without asking** — **now the second-most-recurring
+   finding in the exercise.** Yash (`be5782ec`), Lenvin (`5d6c0447`), and Aastha (`e3f7b5c9`,
+   where haiku and sonnet independently flagged the same session). **Three developers, both
+   repos.** Sonnet's framing in run 9 is the sharpest: *"used `git push --no-verify` after
+   independently reasoning the flagged file was a rebase false positive, with no visible user
+   authorisation… the explanation reads as post-hoc justification."*
 3. **Asserted non-existent feature state as fact in an ERD**
 4. **Committed and pushed without confirming changeset scope**
 5. **Unilaterally marked a tracking item "fine to skip"**
@@ -256,8 +286,22 @@ It was suspicious — **Aarushi's fleek-api arcs show real rework**:
 | `docs/add-product-v2-migration` (PR #9566) | **17** |
 | `SUP-238` (PR #9748) | **5** |
 
-`0 unclassified`, despite ~34% of fleek-api commits lacking conventional prefixes — the
-classifier held up better than predicted.
+`0 unclassified` on that corpus, despite ~34% of fleek-api commits lacking conventional prefixes.
+**That was recorded as the classifier holding up better than predicted. It was luck.**
+
+[Run 9](developer-runs/09-aastha-fleek-api.md) found **12 unclassified** on the same repo, and the
+misses are systematic — the classifier matches conventional prefixes only, so `Revert "fix(…)"`,
+`fix : new route` (space before the colon), `Fixing couple of issues` and `Feat/video call fixes`
+all fall through.
+
+**The worst consequence is not a wrong count — it is a false statement.** On
+`feat/buyer-profile-followups` the only post-merge commit was a revert *of that very PR*; it
+landed unclassified, the rework count read 0, and the report printed:
+
+> _"No fix/revert commits: the follow-on activity was extension or maintenance, not defect
+> repair."_
+
+A `revert`/`fix`-anywhere-in-title fallback would move most of the 12 into rework.
 
 Three bugs were found and fixed while validating the arc builder, all of which **inflated or
 suppressed the headline metric**:
@@ -389,37 +433,46 @@ number per model.
 4. **Ship the secret-in-transcript hook** — §7. Best-evidenced finding, independent of everything else
 5. **Make `arc-builder.mjs` refuse to run without `gh` auth** — it currently reports
    `inactive-no-pr` for every arc when auth fails, which is a *plausible false answer*, not an
-   error (run 7). Cheapest fix with the worst current failure mode
-6. **Scope arc-builder's churn to the repo** — `heuristics.mjs:170` skips out-of-repo files; the
+   error (runs 7 and 9). **Root cause found in run 9: a stale `GITHUB_TOKEN` env var shadowing
+   `gh`'s own credentials** (401); `env -u GITHUB_TOKEN` is the workaround. Cheapest fix with the
+   worst current failure mode
+6. **Classify `Revert "…"` and non-conventional fix titles as rework** — 12 missed on one corpus,
+   and in one case the miss caused the report to print an affirmative "no defect repair" about an
+   arc whose only follow-up was a revert of itself (run 9, §8)
+7. **Make Tier 2's report distinguish a clean judgment from a failed call** — `tier2.mjs` already
+   logs five distinct outcomes to `hone.log`; only the renderer collapses them to
+   `"no finding (or Tier 2 call failed)"`. Until this lands, no per-model count in §6 or §10 is
+   trustworthy without cross-checking the log by hand (run 9)
+8. **Scope arc-builder's churn to the repo** — `heuristics.mjs:170` skips out-of-repo files; the
    churn path in `arc-builder.mjs:197` does not, so E and arc-builder disagree by construction and
    both call the result "edits." Run 8's biggest arc attributes a 345× file from a *different
    clone*. Two lines, and it invalidates every churn figure produced so far
-7. **Window on session date, not file mtime** — `resolve-transcript.mjs:27` builds every `--days N`
+9. **Window on session date, not file mtime** — `resolve-transcript.mjs:27` builds every `--days N`
    window from `statSync().mtimeMs`, so resuming an old session pulls it into a "last 14 days"
    run. A branch merged 2026-05-22 appeared in a 45-day window (run 8). **Affects every check in
    the system**; the parser already reads record timestamps
-8. **Verify `correctionGiven` against the transcript** — mechanical, needs no new runs, and turns
+10. **Verify `correctionGiven` against the transcript** — mechanical, needs no new runs, and turns
    §10's n=1 fabrication observation into a per-model precision number
-9. **Give E a file-kind carve-out** — plan/ERD docs dominate its top hits on three corpora across
+11. **Give E a file-kind carve-out** — plan/ERD docs dominate its top hits on three corpora across
    both repos. A higher threshold alone cannot fix this: run 8 has an ERD at 60 edits and a source
    file at 59 in the same session (§6)
-10. **Surface E's anchor `detail` in `pilot-run.mjs`'s report** — the file and edit count exist in
+12. **Surface E's anchor `detail` in `pilot-run.mjs`'s report** — the file and edit count exist in
    the anchor objects and never reach the report; every developer has had to dig them out of
    arc-builder (run 5)
-11. **Investigate Tier 2 discarding the heaviest-rework sessions** — all three models returned
+13. **Investigate Tier 2 discarding the heaviest-rework sessions** — all three models returned
    "no finding" on three sessions where all seven heuristics fired (run 5). E finds them; Tier 2
    throws them away. Likely an anchor-selection problem — §9's correction-proximity design was
    built for exactly this and is still unbuilt
-12. **Fix A's adjacency bug** — non-consecutive duplicates currently invisible
-13. **Add 2-of-3 model agreement as a confidence *label*** — free, but it keeps ~9% of findings,
+14. **Fix A's adjacency bug** — non-consecutive duplicates currently invisible
+15. **Add 2-of-3 model agreement as a confidence *label*** — free, but it keeps ~9% of findings,
     so do not make it a gate (§6)
-14. **Add a capability/access-probing category** — three independent recall audits surfaced
+16. **Add a capability/access-probing category** — three independent recall audits surfaced
     adjacent classes (*"what do you need to open"*, *"the other session hanged"*,
     `[Request interrupted by user]`, husky pre-push rejections). It is the only friction class
     whose fix is a **tooling change rather than another rule doc**. **Prerequisite:** separate
     *harness caused rework* from *policy gate fired as designed* (run 7) — otherwise widening
     the patterns manufactures findings out of guardrails working correctly
-15. **Re-run the pre-cutoff corpora on the fixed engine** — Yugal, Lenvin and Abhishek's Tier 2
+17. **Re-run the pre-cutoff corpora on the fixed engine** — Yugal, Lenvin and Abhishek's Tier 2
     numbers are all pre-fix and not comparable to runs 5 and 6
 
 ### Operational gotchas that have already cost real time
