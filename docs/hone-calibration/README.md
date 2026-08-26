@@ -47,8 +47,8 @@ never rescue what Tier 1 discarded — so Tier 1 is a hard ceiling on the whole 
 | **B** | Correction language | Message matches one of 9 fixed regexes | **Broken in both directions** — see §5 |
 | **C** | Unreflected volume | >15 tool calls, plan mode never used | Fires on ~95% of candidates. Not a filter |
 | **D** | Frontier-no-delegation | Frontier model/high effort made >10 direct search calls, zero `Agent`/`Task` | Works, but was massively over-represented by a prompt bug (§4) |
-| **E** | File rework | Same in-repo file edited 4+ times | New. Threshold wrong for backend (§6) |
-| **F** | Scope divergence | 3+ edited files the developer never named | New. **Most selective of the three** (5/104) |
+| **E** | File rework | Same in-repo file edited 4+ times | New. Mostly a **docs-churn** detector as built — needs a file-kind carve-out, not a threshold (§6) |
+| **F** | Scope divergence | 3+ edited files the developer never named | New. **Most selective of the three** (1/19, 5/104, 7/36) |
 | **G** | High iteration | 25+ developer turns in a session that produced code | New. Noisy on backend (24/104) |
 
 A–D existed from the start. E/F/G were added 2026-08-24 after the data showed A–D were
@@ -114,11 +114,17 @@ Heuristics should decide *which* evidence to send, never *what to conclude about
 |---|---|
 | "no idea what that does" | "not what I asked for" |
 | "there is **no** signup entry point" | "I meant the fixes not the placeholder changes" |
-| "no need", "no problem" | |
+| "no need", "no problem" | **"one liner very easy answer"** (run 8) |
 
-That second column is a genuine correction from a real session — and **none of the nine patterns
-catch it**. B fires on ~57% of sessions while contributing almost nothing. Terrible precision
-*and* terrible recall, demonstrated in the same dataset.
+That second column is genuine corrections from real sessions — and **none of the nine patterns
+catch any of them**. B fires on ~57% of sessions while contributing almost nothing. Terrible
+precision *and* terrible recall, demonstrated in the same dataset.
+
+The run-8 case is the sharpest: *"one liner very easy answer"* is a developer repeating a
+brevity instruction the model had just ignored — a textbook correction. B missed it. The session
+was caught by **C firing alone**, and it produced the only sonnet finding in that entire run.
+**The heuristic named "correction language" missed the correction; the one described as "not a
+filter" caught the session.**
 
 **A has an adjacency bug.** Aarushi's recall audit found session `80b1a1d3` where the identical
 prompt *"the change went live on this friday"* was sent **twice** and A did not fire — an
@@ -152,8 +158,13 @@ A–G, neutral prompt. Never quote a pre- and a post-cutoff number side by side.
 |---|---|---|---|---|---|---|
 | [Yash re-run](developer-runs/05-yash-fleek-monorepo-rerun.md) | fleek-monorepo | 36 | **6** | **15** | **4** | **11–12 of 15** |
 | [Kishan](developer-runs/06-kishan-fleek-monorepo.md) | fleek-monorepo | 49 / 59 | **17** | **3** | **3** | **23 of 23** |
+| [Sampada](developer-runs/08-sampada-fleek-api.md) | fleek-api | 14 / 19 (74%) | **1** | **1** | **0** | n/a (n=1) |
 | [Abhishek](developer-runs/07-abhishek-fleek-monorepo.md) | fleek-monorepo | 114 / 145 (79%) | *Tier 2 lost to time cap* | | | — |
 | [Aarushi](developer-runs/04-aarushi-fleek-api.md) | fleek-api | 91 / 104 (87.5%) | *Tier 2 never completed* | | | — |
+
+⚠️ **Every `--days N` figure above is approximate.** The window filters on transcript file
+*mtime*, not session date (see §11 gotchas) — a resumed old session lands inside a "last 14 days"
+window. Found in run 8.
 
 **Yield improved sharply with corpus size.** Yugal's run produced nothing actionable; Yash's
 produced 8 genuinely distinct, specific issues. The early "Hone isn't working" read was drawn
@@ -183,10 +194,16 @@ detector.** Its threshold of 4 was calibrated where 7 edits to one file was the 
 | Yugal (frontend) | tracker/plan docs at 14× and 26× |
 | Abhishek (frontend) | **four plan/ERD docs at 42×, 34×, 21×, 16×** before the first code file |
 | Aarushi (backend) | `product.ts` **63×**, `babProductSnapshot.ts` 36×, backfill scripts 15–29× |
+| Sampada (backend) | an ERD at **60×** — with the session's source file at **59×** right behind it |
 
-Two different innocent explanations — plan authoring on the frontend, migration work on the
-backend — and a single global threshold separates neither. **The fix is a file-kind carve-out,
-not a bigger number.** F, at 5/104 and 7/36, remains the most selective new heuristic.
+**Three developers across two repos reported this independently.** Two different innocent
+explanations — plan authoring, migration work — and a single global threshold separates neither.
+
+Sampada's session settles the design question: an ERD at 60 edits and a source file at 59, one
+edit apart, in the same session. **No threshold can split those. A file-kind rule splits them
+trivially.** The fix is a carve-out, not a bigger number.
+
+F, at 1/19, 5/104 and 7/36, remains the most selective new heuristic.
 
 ---
 
@@ -303,9 +320,10 @@ Two clean post-fix runs now exist, on the same repo, same engine. **They invert 
 |---|---|---|---|---|
 | Yash (re-run) | 36 | 6 | **15** | 4 |
 | Kishan | 49 | **17** | 3 | 3 |
+| Sampada | 10 | 1 | 1 | 0 |
 
-Sonnet flags 42% of one developer's candidates and 6% of another's. Haiku does the reverse. Same
-code, same repo, same window, contamination gone.
+Sonnet flags 42% of one developer's candidates, 6% of another's, 10% of a third. Haiku does the
+reverse on the first two. Same code, contamination gone.
 
 **The conclusion is not "haiku" or "sonnet". It is that flag rate is dominated by whose sessions
 are being read, and is therefore the wrong instrument for choosing the default.** A tempting
@@ -326,6 +344,28 @@ Note also that **opus/medium found the best single finding in the corpus** (the 
 `~/.claude.json`, [run 6](developer-runs/06-kishan-fleek-monorepo.md)) while flagging only 3 of 49
 — consistent with its pre-fix reputation as the precision leader, and an argument for running it
 occasionally as an audit rather than continuously as the default.
+
+### The one piece of model evidence that isn't a rate
+
+[Run 8](developer-runs/08-sampada-fleek-api.md) produced exactly one finding per model, which
+makes them directly comparable in a way no table above is.
+
+**Sonnet quoted the developer verbatim** in its `correctionGiven` field — *"one liner very easy
+answer"*, a real repeated instruction, checkable against the transcript.
+
+**Haiku fabricated that field.** Its finding rated itself *high* confidence, and wrote into
+`correctionGiven`: *"Claude should have directly built the structured script…"* — the judge's own
+opinion, in a field that exists to record what the human said. No such correction was given.
+
+**This is better evidence than any flag-rate comparison in this document**, because it shows a
+failure *mode* rather than a rate, and needs no control group to interpret. A judge that invents
+the evidence for its own finding is not a thoroughness difference; it is a correctness difference,
+and it feeds a human review gate.
+
+**Concrete cheap test, worth doing before any model decision:** for every finding on record, check
+whether the `correctionGiven` string actually appears in its transcript. That is a mechanical
+check, it needs no new runs, and it would convert this n=1 observation into a real precision
+number per model.
 
 ---
 
@@ -350,25 +390,36 @@ occasionally as an audit rather than continuously as the default.
 5. **Make `arc-builder.mjs` refuse to run without `gh` auth** — it currently reports
    `inactive-no-pr` for every arc when auth fails, which is a *plausible false answer*, not an
    error (run 7). Cheapest fix with the worst current failure mode
-6. **Give E a file-kind carve-out** — plan/ERD docs dominate its top hits on two frontend corpora.
-   A higher threshold alone does not fix this (§6)
-7. **Surface E's anchor `detail` in `pilot-run.mjs`'s report** — the file and edit count exist in
+6. **Scope arc-builder's churn to the repo** — `heuristics.mjs:170` skips out-of-repo files; the
+   churn path in `arc-builder.mjs:197` does not, so E and arc-builder disagree by construction and
+   both call the result "edits." Run 8's biggest arc attributes a 345× file from a *different
+   clone*. Two lines, and it invalidates every churn figure produced so far
+7. **Window on session date, not file mtime** — `resolve-transcript.mjs:27` builds every `--days N`
+   window from `statSync().mtimeMs`, so resuming an old session pulls it into a "last 14 days"
+   run. A branch merged 2026-05-22 appeared in a 45-day window (run 8). **Affects every check in
+   the system**; the parser already reads record timestamps
+8. **Verify `correctionGiven` against the transcript** — mechanical, needs no new runs, and turns
+   §10's n=1 fabrication observation into a per-model precision number
+9. **Give E a file-kind carve-out** — plan/ERD docs dominate its top hits on three corpora across
+   both repos. A higher threshold alone cannot fix this: run 8 has an ERD at 60 edits and a source
+   file at 59 in the same session (§6)
+10. **Surface E's anchor `detail` in `pilot-run.mjs`'s report** — the file and edit count exist in
    the anchor objects and never reach the report; every developer has had to dig them out of
    arc-builder (run 5)
-8. **Investigate Tier 2 discarding the heaviest-rework sessions** — all three models returned
+11. **Investigate Tier 2 discarding the heaviest-rework sessions** — all three models returned
    "no finding" on three sessions where all seven heuristics fired (run 5). E finds them; Tier 2
    throws them away. Likely an anchor-selection problem — §9's correction-proximity design was
    built for exactly this and is still unbuilt
-9. **Fix A's adjacency bug** — non-consecutive duplicates currently invisible
-10. **Add 2-of-3 model agreement as a confidence *label*** — free, but it keeps ~9% of findings,
+12. **Fix A's adjacency bug** — non-consecutive duplicates currently invisible
+13. **Add 2-of-3 model agreement as a confidence *label*** — free, but it keeps ~9% of findings,
     so do not make it a gate (§6)
-11. **Add a capability/access-probing category** — three independent recall audits surfaced
+14. **Add a capability/access-probing category** — three independent recall audits surfaced
     adjacent classes (*"what do you need to open"*, *"the other session hanged"*,
     `[Request interrupted by user]`, husky pre-push rejections). It is the only friction class
     whose fix is a **tooling change rather than another rule doc**. **Prerequisite:** separate
     *harness caused rework* from *policy gate fired as designed* (run 7) — otherwise widening
     the patterns manufactures findings out of guardrails working correctly
-12. **Re-run the pre-cutoff corpora on the fixed engine** — Yugal, Lenvin and Abhishek's Tier 2
+15. **Re-run the pre-cutoff corpora on the fixed engine** — Yugal, Lenvin and Abhishek's Tier 2
     numbers are all pre-fix and not comparable to runs 5 and 6
 
 ### Operational gotchas that have already cost real time
