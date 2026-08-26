@@ -4,3 +4,6 @@ __pycache__/
 # AI-1 local harness-improver state (Trigger Queue, Local Buffer) - per-repo,
 # per-developer, never committed. See CLAUDE.md / engine/hone-paths.mjs.
 .claude/hone/
+
+# Workflow-created temporary git worktrees - never commit
+.claude/worktrees/
