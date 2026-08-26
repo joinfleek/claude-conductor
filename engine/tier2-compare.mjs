@@ -70,6 +70,21 @@ function main() {
         '',
     ];
 
+    // Write the report incrementally, after every session. This used to be a
+    // single writeFileSync at the very end, which meant a run stopped at a time
+    // cap (the common outcome on a large history - one claude -p call per
+    // session per config adds up fast) lost 100% of the work, not just the
+    // unfinished remainder. Found by Abhishek Jaiswal's fleek-monorepo run,
+    // 2026-08-24: he hit a ~20min cap at 145 sessions and was left with no
+    // report file at all.
+    const dir = reportsDir(repoPath);
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    const stamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+    const outPath = join(dir, `hone-tier2-compare-${repo}-${stamp}.md`);
+    const flush = () => writeFileSync(outPath, `${sections.join('\n')}\n`);
+    flush();
+    console.error(`Writing to ${outPath} (updated after each session - safe to Ctrl-C)\n`);
+
     let candidateCount = 0;
     for (const t of transcripts) {
         let turns;
@@ -106,18 +121,13 @@ function main() {
             });
             sections.push(renderResult(config, result), '');
         }
+        flush();
     }
 
     if (!candidateCount) sections.push('No Tier 1 candidates in this window.');
 
-    const report = `${sections.join('\n')}\n`;
-    console.log(report);
-
-    const dir = reportsDir(repoPath);
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    const stamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-    const outPath = join(dir, `hone-tier2-compare-${repo}-${stamp}.md`);
-    writeFileSync(outPath, report);
+    flush();
+    console.log(`${sections.join('\n')}\n`);
     console.error(`\nComparison written to ${outPath}`);
 }
 

@@ -1,7 +1,7 @@
 # Hone calibration — consolidated findings
 
 Everything learned from building Hone (Fleek's AI-1, Tech Velocity Initiative Pillar 2) and
-running it against four developers' real Claude Code session history, 2026-08-19 → 2026-08-26.
+running it against six developers' real Claude Code session history, 2026-08-19 → 2026-08-26.
 
 Per-developer raw results live in [`developer-runs/`](developer-runs/). This file is the
 synthesis: what was built, what the data actually said, what turned out to be wrong, and what
@@ -129,34 +129,64 @@ Both left unfixed by explicit decision. Documented so nobody re-derives them.
 
 ---
 
-## 6. What the four runs actually showed
+## 6. What the seven runs actually showed
 
 Full detail per developer in [`developer-runs/`](developer-runs/).
 
+**The `b6835d8` cutoff (2026-08-24 15:23 IST) splits this table in half and the two halves are
+not comparable.** Before it: heuristics A–D only, and a contaminated Tier 2 prompt (§4). After it:
+A–G, neutral prompt. Never quote a pre- and a post-cutoff number side by side.
+
+### Pre-cutoff — A–D, contaminated prompt
+
 | | Repo | Candidates | haiku | sonnet | opus | Distinct issues |
 |---|---|---|---|---|---|---|
-| Yugal | fleek-monorepo | 10 / 11 (91%) | 9 | 2 | 2 | ~0 actionable |
-| Lenvin | fleek-monorepo | 17 | 11 | 7 | 3 | 2 |
-| Yash | fleek-monorepo | 37 | 18 | 17 | 9 | **8** |
-| Aarushi | fleek-api | 91 / 104 (87.5%) | *Tier 2 never completed* | | | — |
+| [Yugal](developer-runs/01-yugal-fleek-monorepo.md) | fleek-monorepo | 10 / 11 (91%) | 9 | 2 | 2 | ~0 actionable |
+| [Lenvin](developer-runs/02-lenvin-fleek-monorepo.md) | fleek-monorepo | 17 | 11 | 7 | 3 | 2 of 7 |
+| [Yash](developer-runs/03-yash-fleek-monorepo.md) | fleek-monorepo | 37 | 18 | 17 | 9 | 8 of 17 |
+| [Abhishek](developer-runs/07-abhishek-fleek-monorepo.md) (partial) | fleek-monorepo | 33 | 15 | 8 | 12 | **1 of 8** |
+
+### Post-cutoff — A–G, neutral prompt
+
+| | Repo | Candidates | haiku | sonnet | opus | Distinct issues |
+|---|---|---|---|---|---|---|
+| [Yash re-run](developer-runs/05-yash-fleek-monorepo-rerun.md) | fleek-monorepo | 36 | **6** | **15** | **4** | **11–12 of 15** |
+| [Kishan](developer-runs/06-kishan-fleek-monorepo.md) | fleek-monorepo | 49 / 59 | **17** | **3** | **3** | **23 of 23** |
+| [Abhishek](developer-runs/07-abhishek-fleek-monorepo.md) | fleek-monorepo | 114 / 145 (79%) | *Tier 2 lost to time cap* | | | — |
+| [Aarushi](developer-runs/04-aarushi-fleek-api.md) | fleek-api | 91 / 104 (87.5%) | *Tier 2 never completed* | | | — |
 
 **Yield improved sharply with corpus size.** Yugal's run produced nothing actionable; Yash's
 produced 8 genuinely distinct, specific issues. The early "Hone isn't working" read was drawn
 from a 10-session sample — far too small (a 95% CI on 2/10 spans roughly 3–56%).
 
-**Tier 1 does not filter.** 87–91% flag rates. C alone fires on ~95% of candidates. The OR-gate
-over broad heuristics passes nearly everything through, so Tier 2 does all the discrimination
-and pays per call for it.
+**Distinct-yield is the metric that responded to the fix, and it responded hard.** Pre-cutoff:
+0%, 29%, 47%, 12%. Post-cutoff: 73% and 100%. Yash's two runs are the controlled comparison —
+same developer, same repo, same window, engine the only variable — and the delegation cluster went
+**9 → 0**.
 
-**Cross-model agreement tracks quality almost perfectly.** Every high-value finding was found
-independently by 2–3 models; every repetitive "delegate more" restatement by exactly one. This
-is a free precision filter that is **still not implemented**.
+**Tier 1 does not filter.** 79–91% flag rates across every corpus measured. C alone fires on ~95%
+of candidates. The OR-gate over broad heuristics passes nearly everything through, so Tier 2 does
+all the discrimination and pays per call for it. Adding E/F/G did not change this: Abhishek's
+79% is the *lowest* rate recorded and still passes four sessions in five.
 
-**E's threshold is wrong for backend work.** Calibrated on frontend sessions where 7 edits to
-one file was the high end. In fleek-api, `product.ts` was edited **63×** and
-`babProductSnapshot.ts` **36×**; backfill scripts routinely hit 15–29×. On backend migration
-work those counts appear to be normal. E fired on 37/104 sessions there. F, at 5/104, is by far
-the most selective new heuristic.
+**Cross-model agreement tracks quality almost perfectly** — every high-value finding was found
+independently by 2–3 models, every repetitive "delegate more" restatement by exactly one — but it
+is a **far harsher filter than that framing suggests.** On Kishan's 49 candidates only **2** had
+more than one model agreeing. As a confidence tier it keeps ~9% of findings, not "the good ones
+plus most of the rest". Still unimplemented; implement it as a *label*, not a gate.
+
+**E is not really a rework detector yet — on frontend corpora it is a documentation-churn
+detector.** Its threshold of 4 was calibrated where 7 edits to one file was the high end. Since:
+
+| Corpus | E's top files |
+|---|---|
+| Yugal (frontend) | tracker/plan docs at 14× and 26× |
+| Abhishek (frontend) | **four plan/ERD docs at 42×, 34×, 21×, 16×** before the first code file |
+| Aarushi (backend) | `product.ts` **63×**, `babProductSnapshot.ts` 36×, backfill scripts 15–29× |
+
+Two different innocent explanations — plan authoring on the frontend, migration work on the
+backend — and a single global threshold separates neither. **The fix is a file-kind carve-out,
+not a bigger number.** F, at 5/104 and 7/36, remains the most selective new heuristic.
 
 ---
 
@@ -178,6 +208,20 @@ The best output of the whole exercise, all from Yash's run:
 Items 2, 4 and 5 share a theme — *a consequential action or scope cut taken without a
 confirmation gate*. **That maps directly onto developer complaint #2 ("AI makes unnecessary
 changes").**
+
+### The best-evidenced finding in the exercise: secrets in transcripts
+
+Added 2026-08-26. Opus flagged, in Kishan's session `2a16e984`, **a secret pasted inline during
+MCP server registration and persisting in `~/.claude/history.jsonl` and `~/.claude.json`**.
+
+This is the same failure class as the clearest true positive from the original 10-session scoping
+run. **Two independent occurrences, two developers, weeks apart, different machines** — the only
+finding anywhere in this exercise with independent recurrence across people.
+
+It is also the only one that does not depend on a single open calibration question. Thresholds,
+model choice and anchor selection can all stay unresolved and this still needs a hook.
+
+**Act on this one first.** See [run 6](developer-runs/06-kishan-fleek-monorepo.md).
 
 ---
 
@@ -246,18 +290,42 @@ which is exactly what anchor selection needs.
 
 ## 10. Where the model comparison landed
 
-Default is `sonnet`/`effort=high`. **Contested — do not treat as settled.**
+Default is `sonnet`/`effort=high`. **Contested — and the post-cutoff data makes it more
+contested, not less.**
 
-Chosen from a 10-session run (haiku 9/10, sonnet 2/10, opus 2/10). That sample cannot support
-the conclusion. A 37-session run came back haiku 18 / sonnet 17 / opus 9 — haiku and sonnet at
-effectively the same rate, which the original rationale does not predict.
+Chosen from a 10-session run (haiku 9/10, sonnet 2/10, opus 2/10). That sample cannot support the
+conclusion. A 37-session pre-fix run came back haiku 18 / sonnet 17 / opus 9 — near-parity, which
+the original rationale does not predict.
 
-In that larger run **opus/medium was the clear precision leader**: 8 distinct issues from 9
-findings (89%) vs sonnet's 8 from 17 (47%). Sonnet has better recall. Sonnet kept for now
-because much of its noise traced to the prompt contamination since removed, so its distinct-yield
-should improve without a model change.
+Two clean post-fix runs now exist, on the same repo, same engine. **They invert each other:**
 
-**All cross-run model comparisons are soft** until the corpora are re-run on the fixed engine.
+| | Candidates | haiku | sonnet | opus |
+|---|---|---|---|---|
+| Yash (re-run) | 36 | 6 | **15** | 4 |
+| Kishan | 49 | **17** | 3 | 3 |
+
+Sonnet flags 42% of one developer's candidates and 6% of another's. Haiku does the reverse. Same
+code, same repo, same window, contamination gone.
+
+**The conclusion is not "haiku" or "sonnet". It is that flag rate is dominated by whose sessions
+are being read, and is therefore the wrong instrument for choosing the default.** A tempting
+reading of Kishan's data alone — "the contamination was inflating sonnet, and with it removed
+sonnet is selective again" — is directly refuted by Yash's post-fix 15. Both readings cannot hold;
+neither survives the pair.
+
+What *did* survive the fix, in both runs and measured the same way each time, is **distinct-yield**
+(§6: 73% and 100%, up from 12–47%). That is a property of the prompt, not the model, and it is
+measurable per-run without a control group.
+
+**Recommendation:** stop trying to settle the model from flag-rate comparisons — more runs will
+keep producing contradictory orderings. Either decide it on cost and latency (haiku is ~10× cheaper
+and this runs on every sweep), or decide it downstream on the only metric that matters, once
+`promote-feedback` exists to supply it: **which model's findings a CODEOWNER actually merges.**
+
+Note also that **opus/medium found the best single finding in the corpus** (the secret in
+`~/.claude.json`, [run 6](developer-runs/06-kishan-fleek-monorepo.md)) while flagging only 3 of 49
+— consistent with its pre-fix reputation as the precision leader, and an argument for running it
+occasionally as an audit rather than continuously as the default.
 
 ---
 
@@ -274,19 +342,51 @@ should improve without a model change.
 
 ### Ordered next steps, cheapest first
 
-1. ~~Stop leaking heuristic names into the Tier 2 prompt~~ — **done**
+1. ~~Stop leaking heuristic names into the Tier 2 prompt~~ — **done**, and §6 now shows it worked
 2. ~~Delete the routing-rule worked example~~ — **done**
-3. **Raise E's threshold** or normalise against each session's own edit distribution (backend needs ~15–20, not 4)
-4. **Fix A's adjacency bug** — non-consecutive duplicates currently invisible
-5. **Add 2-of-3 model agreement as a confidence tier** — free, and it separates good findings cleanly
-6. **Re-run all four corpora on the fixed engine** — current cross-run numbers are not comparable
-7. **Add a capability/access-probing category** — two independent recall audits surfaced it
-   (*"what do you need to open"*, *"the other session hanged"*, `[Request interrupted by user]`).
-   It is the only friction class whose fix is a **tooling change rather than another rule doc**.
+3. ~~Make `tier2-compare.mjs` write incrementally~~ — **done 2026-08-26**; it wrote once at the end,
+   so any run stopped at a time cap lost everything (run 7)
+4. **Ship the secret-in-transcript hook** — §7. Best-evidenced finding, independent of everything else
+5. **Make `arc-builder.mjs` refuse to run without `gh` auth** — it currently reports
+   `inactive-no-pr` for every arc when auth fails, which is a *plausible false answer*, not an
+   error (run 7). Cheapest fix with the worst current failure mode
+6. **Give E a file-kind carve-out** — plan/ERD docs dominate its top hits on two frontend corpora.
+   A higher threshold alone does not fix this (§6)
+7. **Surface E's anchor `detail` in `pilot-run.mjs`'s report** — the file and edit count exist in
+   the anchor objects and never reach the report; every developer has had to dig them out of
+   arc-builder (run 5)
+8. **Investigate Tier 2 discarding the heaviest-rework sessions** — all three models returned
+   "no finding" on three sessions where all seven heuristics fired (run 5). E finds them; Tier 2
+   throws them away. Likely an anchor-selection problem — §9's correction-proximity design was
+   built for exactly this and is still unbuilt
+9. **Fix A's adjacency bug** — non-consecutive duplicates currently invisible
+10. **Add 2-of-3 model agreement as a confidence *label*** — free, but it keeps ~9% of findings,
+    so do not make it a gate (§6)
+11. **Add a capability/access-probing category** — three independent recall audits surfaced
+    adjacent classes (*"what do you need to open"*, *"the other session hanged"*,
+    `[Request interrupted by user]`, husky pre-push rejections). It is the only friction class
+    whose fix is a **tooling change rather than another rule doc**. **Prerequisite:** separate
+    *harness caused rework* from *policy gate fired as designed* (run 7) — otherwise widening
+    the patterns manufactures findings out of guardrails working correctly
+12. **Re-run the pre-cutoff corpora on the fixed engine** — Yugal, Lenvin and Abhishek's Tier 2
+    numbers are all pre-fix and not comparable to runs 5 and 6
+
+### Operational gotchas that have already cost real time
+
+- **Report filenames are UTC; developers report in IST.** `...2026-08-24T11-22-06.md` is 16:52
+  IST. Read as IST it appears to predate the engine fix by four hours, and it was dismissed on
+  exactly that basis (run 5). **Identify a run by its heuristic tags and per-model counts, never
+  by filename time.**
+- **Session IDs identify the developer, not the run.** Two runs on the same machine in the same
+  window share session IDs. Overlap is not evidence that two files are the same run (run 5).
+- **A run's report file may not exist at all.** Slack sessions without file-upload capability
+  leave only the developer's paraphrase (run 7). Ask for the file explicitly.
 
 ### Explicitly too thin to conclude
 
 - Whether Yash's better yield is the tool or the developer (37 candidates vs Yugal's 11 in the same window)
+- **Which Tier 2 model to default to.** Two post-fix runs invert each other (§10). More flag-rate
+  comparisons will not resolve this; a different instrument will
 - The capability-probing heuristic (n=1 per developer)
 - True recall — the audit only ever samples *non*-candidates, i.e. short sessions where there is little to find, judged by the same model class as Tier 2
 - **Whether any finding is actionable to a reviewer.** Nothing has gone through `promote-feedback` yet. *"A model wrote a plausible rule candidate"* is not *"a CODEOWNER merged it."* **This is the calibration that actually matters and none of the four runs touch it.**
