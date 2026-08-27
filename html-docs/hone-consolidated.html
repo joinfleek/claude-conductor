@@ -153,7 +153,7 @@ footer{padding:34px 0 60px;color:var(--ink-3);font-size:13.5px}
       <div class="stat"><b>8</b><span>developers</span></div>
       <div class="stat"><b>~400</b><span>sessions</span></div>
       <div class="stat"><b>2</b><span>repos</span></div>
-      <div class="stat"><b>21</b><span>bugs in the tool</span></div>
+      <div class="stat"><b>22</b><span>bugs in the tool</span></div>
       <div class="stat"><b>0</b><span>findings merged</span></div>
     </div>
   </div>
@@ -273,6 +273,8 @@ footer{padding:34px 0 60px;color:var(--ink-3);font-size:13.5px}
       <p>The only run where all four checks completed, on the smallest corpus. Sparse results — two findings from thirty AI calls — which is itself a useful contrast with Aarushi's 104.</p>
       <p>She found two bugs by reading her own numbers skeptically: the rework measurement was counting edits made in <em>completely different folders</em> and attributing them to one branch, and a branch that merged in May was showing up in a "last 45 days" window. That second one affects every number in every run.</p>
       <p>Her run also settled a design argument: one session had a design document edited 60 times and a source file edited 59 times. No single threshold separates those. A rule about <em>what kind of file it is</em> separates them instantly.</p>
+      <p><strong>And she is why we know her own numbers can be trusted.</strong> Asked to check her log, she came back with no errors, no warnings, and <strong>28 genuine "nothing to report" judgments</strong> — 28 plus her 2 findings is exactly 30, one per session per model, nothing unaccounted for. Hers is only the second run of nine verified this way.</p>
+      <p>Checking it, she also found what the log <em>can't</em> do: it records that a call failed, but not <strong>which model or which session</strong>. So it can clear a whole run, as it cleared hers, and can never fix a per-model number — which is exactly what we had wanted it for.</p>
     </article>
 
     <article class="person">
@@ -280,7 +282,7 @@ footer{padding:34px 0 60px;color:var(--ink-3);font-size:13.5px}
       <div class="meta">backend · 26 Aug · 44 sessions</div>
       <p>Found the cause of Abhishek's mystery — a stale GitHub token overriding his login — in one pass.</p>
       <p>She also caught the tool making a <strong>flatly false statement</strong>. On one branch it printed "no fix or revert commits — the follow-on activity was extension or maintenance, not defect repair." The only follow-on commit was a revert <em>of that exact branch</em>. The tool doesn't recognise the word "Revert", so the count was zero, so it produced a confident all-clear.</p>
-      <p>And she raised the one open question that could undo a lot of the above: our reports print "no finding (or the call failed)" as a single message, so we cannot tell a model that judged a session clean from a model whose call simply broke.</p>
+      <p>And she raised the one open question that could undo a lot of the above: our reports print "no finding (or the call failed)" as a single message, so we cannot tell a model that judged a session clean from a model whose call simply broke. <strong>Her own run is still unverified</strong> — the log numbers haven't come back yet.</p>
     </article>
   </div>
 </section>
@@ -340,7 +342,9 @@ footer{padding:34px 0 60px;color:var(--ink-3);font-size:13.5px}
   </div>
 
   <div class="note warn">
-    <p>⚠️ <strong>The three model columns may not mean what they appear to mean.</strong> The report prints every empty result as "no finding (or the call failed)", so a clean judgment and a broken call look identical. Only <strong>one run of nine</strong> ever verified from the logs that its calls actually succeeded.</p>
+    <p>⚠️ <strong>The three model columns may not mean what they appear to mean.</strong> The report prints every empty result as "no finding (or the call failed)", so a clean judgment and a broken call look identical.</p>
+    <p><strong>Verified against the logs so far — 2 runs of 9:</strong> Kishan (147/147 calls clean) and Sampada (no errors, no warnings, 28 genuine judgments). Aastha's is outstanding. Every other run is unverified.</p>
+    <p>⚠️⚠️ <strong>And the log cannot settle the per-model question at all.</strong> Every line records <em>that</em> a call failed but not <strong>which model or which session</strong> it was. So it can clear a whole run — as it cleared Sampada's — and can never correct a per-model rate. Found by Sampada while answering the check. Until the model is stamped on each line, no amount of log-reading fixes this table.</p>
   </div>
 
   <h3>What was the same for every developer</h3>
@@ -371,12 +375,12 @@ footer{padding:34px 0 60px;color:var(--ink-3);font-size:13.5px}
       <tr><td>Findings that were real and specific</td><td class="num">~12</td></tr>
       <tr><td>Findings that recurred across people</td><td class="num">2</td></tr>
       <tr><td><strong>Findings that reached a code reviewer</strong></td><td class="num"><strong>0</strong></td></tr>
-      <tr><td>Bugs found in Hone itself</td><td class="num">21 <span class="pill fixed">11 fixed</span> <span class="pill open">10 open</span></td></tr>
+      <tr><td>Bugs found in Hone itself</td><td class="num">22 <span class="pill fixed">11 fixed</span> <span class="pill open">11 open</span></td></tr>
     </tbody>
   </table></div>
   <div class="note bad">
-    <p><strong>The exercise found nearly twice as many defects in the measuring instrument as it found findings in the thing being measured.</strong> That is not a failure — it is what calibration is for. But it means every number produced before 26 August was measured with an instrument we now know was faulty in at least eight ways.</p>
-    <p>Worth noting who found what: <strong>seven of the ten open bugs were found by developers running it on their own history, not by us testing it</strong> — all in the last three days, as more people ran it. That rate has not levelled off.</p>
+    <p><strong>The exercise found nearly twice as many defects in the measuring instrument as it found findings in the thing being measured.</strong> That is not a failure — it is what calibration is for. But it means every number produced before 26 August was measured with an instrument we now know was faulty in at least nine ways.</p>
+    <p>Worth noting who found what: <strong>eight of the eleven open bugs were found by developers running it on their own history, not by us testing it</strong> — all in the last three days, as more people ran it. <strong>That rate has not levelled off:</strong> the calibration-prompt bug was found on the last day by reading code the documentation said was already fixed, and the logging gap the day after that, by a developer checking her own log to answer a question about a different bug.</p>
   </div>
 
   <h3>What to measure from here</h3>

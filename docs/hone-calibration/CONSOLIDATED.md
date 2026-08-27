@@ -150,6 +150,15 @@ Her run also gave the cleanest evidence on a question we'd been going round on: 
 design document edited 60 times and a source file edited 59 times. No single threshold can
 separate those two. A rule about *what kind of file it is* separates them instantly.
 
+**And she is why we know her own numbers can be trusted.** Asked to check her log, she came back
+with **no errors, no warnings, and 28 genuine "nothing to report" judgments** — 28 plus her 2
+findings is exactly 30, one per session per model, nothing unaccounted for. Hers is only the
+second run of nine verified this way.
+
+Checking it, she also found what the log *can't* do: it records that a call failed, but not
+**which model or which session** it was. So the log can clear a whole run, as it cleared hers, and
+can never fix a per-model number — which is exactly what we had wanted it for.
+
 ### Aastha — backend — 26 Aug
 The newest run, all four checks complete, 44 sessions. She found the cause of Abhishek's mystery —
 a stale GitHub token overriding his login — in one pass.
@@ -161,7 +170,8 @@ follow-on commit was a revert *of that exact branch*. The tool doesn't recognise
 
 And she raised the one open question that could undo a lot of the above: our reports print
 "no finding (or the call failed)" as a single message, so we cannot tell a model that judged a
-session clean from a model whose call simply broke. We have been comparing models across nine runs
+session clean from a model whose call simply broke. **Her own run is still unverified** — she
+hasn't sent the log numbers back yet. We have been comparing models across nine runs
 on numbers that might partly be failure rates. **We've asked her and Sampada to check — the
 information is already in their logs.**
 
@@ -235,8 +245,8 @@ feature-arc reconstruction from git, the three-model comparison, and the false-n
 - **Findings that recurred across people:** two.
 - **Findings that reached a code reviewer:** **zero, until three PRs were raised on the backend
   last week — and those were grounded in git history, not in Hone's own findings.**
-- **Bugs found in Hone itself:** twenty-one. **Eleven fixed, ten still open** — two of those left
-  open deliberately (checks A and B), eight genuinely outstanding.
+- **Bugs found in Hone itself:** twenty-two. **Eleven fixed, eleven still open** — two of those
+  left open deliberately (checks A and B), nine genuinely outstanding.
 
 That last line is worth sitting with. **The exercise found nearly twice as many defects in the
 measuring instrument as it found findings in the thing being measured.** That is not a failure —
@@ -288,11 +298,13 @@ how much they'd actually tell us:
 | 19 | Rework detail never printed in the report that computes it | Yash / Sampada | **open** |
 | 20 | Commit counts disagree with edit counts on some branches | Abhishek / Sampada | **open, undiagnosed** |
 | 21 | **Calibration tool and production run different judge prompts** | independent review | **open — most consequential** |
+| 22 | Tier 2 log records *what* failed but not *which model or session* | Sampada | **open** |
 
-Worth noting who found what: **items 14–20 were all found by developers running it on their own
+Worth noting who found what: **items 14–20 and 22 were all found by developers running it on their own
 history, not by us testing it.** Seven of the nine open bugs surfaced in the last three days of
-the exercise, as more people ran it. That rate has not levelled off — item 21 was found on the
-last day, by reading code the documentation said had already been fixed.
+the exercise, as more people ran it. **That rate has not levelled off** — item 21 was found on
+the last day, by reading code the documentation said had already been fixed, and item 22 the
+day after that, by a developer checking her own log to answer a question about a different bug.
 
 ---
 

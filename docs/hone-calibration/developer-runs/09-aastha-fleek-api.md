@@ -113,7 +113,22 @@ already logs five distinct outcomes to `hone.log`:
 | **`isFinding: false` — a genuine negative judgment** | info | `tier2.mjs:135` |
 
 Only the *report renderer* collapses all five to one string. So the question is settleable from
-her existing log with no re-run — asked, answer pending.
+her existing log with no re-run — asked 2026-08-26, **still pending from her.**
+
+### ⚠️ But the log cannot answer it the way we assumed
+
+[Sampada](08-sampada-fleek-api.md) ran the same check on her own log and found the limitation
+while doing it: every Tier 2 line carries `sessionId: null` and there is **no `model` field**.
+Confirmed in code (`log.mjs:37`, `tier2.mjs:104`).
+
+So the log can say *"N of this run's calls failed"* — an aggregate verdict — but never
+*"**sonnet's** calls failed"*. **On this run that is precisely the question.** haiku 8 / sonnet 1 /
+opus 0 is only suspicious *per model*, and the log has no per-model dimension.
+
+Her result came back clean (error 0, warn 0, info 28), so hers is verified. If Aastha's comes back
+with a non-zero error or warn count, we will know **something** failed and still not know **which
+model** — and the per-model comparison stays unresolved until `sessionId` and `model` are stamped
+on each line.
 
 **If she is right, it is the most consequential finding of the exercise**, because
 [README §10](../README.md) reads per-model rate differences across nine runs as developer

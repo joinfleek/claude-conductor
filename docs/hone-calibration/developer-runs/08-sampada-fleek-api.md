@@ -116,7 +116,20 @@ nothing.**
 
 (Her summary says 27 of 30. The raw report contains exactly two findings — sonnet on `df4a21e7`,
 haiku on `01b8f472` — so 28 is the number. Immaterial to any conclusion, corrected because the
-file is the source and the paraphrase isn't.)
+file is the source and the paraphrase isn't. **Her `hone.log` later confirmed 28 independently.**)
+
+### ✅ Verified against the log — this run's sparse result is real
+
+Asked 2026-08-26 whether those 28 empties were genuine judgments or failed calls (the concern
+[run 9](09-aastha-fleek-api.md) raised). Her answer:
+
+> **error 0, warn 0, info 28.** All 28 are `no finding (isFinding: false)` — genuine judgments, no
+> failed calls. 28 + my 2 findings = 30, which is exactly 10 sessions × 3 models, so nothing's
+> unaccounted for. **On my run the haiku 1 / sonnet 1 / opus 0 is real, not the instrument.**
+
+This is the **second run of nine** to have its Tier 2 calls verified against the log (after
+[run 6](06-kishan-fleek-monorepo.md)), and the only backend one. The sparse-signal contrast
+against Aarushi's 104-session corpus stands as a real finding.
 
 Her framing is the right one: *"on my session mix the signal is very sparse, which may be the
 useful contrast against Aarushi's run."*
@@ -169,6 +182,30 @@ Her summary says 2,809 human turns on the biggest arc; the report says **2,817**
 noted because it is the kind of drift that makes paraphrase a worse source than the file — which
 is the lesson [run 7](07-abhishek-fleek-monorepo.md) is filed under.
 
+## The defect she found while answering — and it blocks the fix we wanted
+
+Checking her log, she noticed what it *can't* tell you:
+
+> every line logs `sessionId: null` and `detail: null`, and there's no model field. So even where
+> the counts aren't clean like mine, the log can't tell you which session or which model failed.
+> If you're using this to correct the per-model rates across the eight runs, it'd need session id
+> and model stamped on each line first.
+
+**Confirmed in code.** `log.mjs:37` declares `sessionId = null` as a default and `tier2.mjs` never
+passes one, so every Tier 2 line carries `sessionId: null`. The entry schema has **no `model`
+field at all** — only the *error* branch embeds the model, and only inside a free-text message
+string (`tier2.mjs:104`). The `isFinding: false` line that matters here carries nothing.
+
+**Why this is the sharper half of her answer.** The log can validate a run **in aggregate** —
+which is exactly what she just did — but it **cannot correct per-model rates**, because nothing on
+the line says which model made the call. So for [run 9](09-aastha-fleek-api.md), where haiku 8 /
+sonnet 1 / opus 0 is genuinely suspicious, the log could only ever say *"N calls failed"*, never
+*"sonnet's calls failed"*.
+
+That is the exact question [README §10](../README.md) needs answered. **Stamp `sessionId` and
+`model` on every Tier 2 log line** before the log can settle anything about model choice.
+
 ## Status
 
 Reported 2026-08-26 13:16 IST, ~30 minutes after being asked. All four reports attached and read.
+`hone.log` follow-up answered same day — **run verified clean**.

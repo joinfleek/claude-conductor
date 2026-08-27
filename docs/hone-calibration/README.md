@@ -211,9 +211,22 @@ A–G, neutral prompt. Never quote a pre- and a post-cutoff number side by side.
 
 ⚠️ **The haiku/sonnet/opus columns may not mean what they appear to mean.** The report renders
 every null as `"no finding (or Tier 2 call failed)"`, so a clean judgment and a broken call are
-indistinguishable in it (run 9). Only [run 6](developer-runs/06-kishan-fleek-monorepo.md) verified
-against `hone.log` that its calls actually succeeded. Until Aastha's and Sampada's logs come back,
-treat low sonnet/opus counts as **unverified**.
+indistinguishable in it (run 9).
+
+**Verified against `hone.log` so far — 2 runs of 9:**
+
+| Run | Log check | Verdict |
+|---|---|---|
+| [Kishan](developer-runs/06-kishan-fleek-monorepo.md) | 147/147 calls clean | counts are real |
+| [Sampada](developer-runs/08-sampada-fleek-api.md) | error 0 · warn 0 · info 28 | counts are real |
+| [Aastha](developer-runs/09-aastha-fleek-api.md) | **pending** | unverified |
+| all others | never checked | unverified |
+
+⚠️⚠️ **And the log cannot settle the per-model question at all.** Every Tier 2 line carries
+`sessionId: null` and there is **no `model` field** (`log.mjs:37`, `tier2.mjs:104`). The log gives
+an aggregate verdict per run — *"N calls failed"* — never *"**sonnet's** calls failed"*. Found by
+Sampada while answering the check. **Until `sessionId` and `model` are stamped on each line, no
+amount of log-reading can correct a per-model rate.**
 
 ⚠️ **Every `--days N` figure above is approximate.** The window filters on transcript file
 *mtime*, not session date (see §11 gotchas) — a resumed old session lands inside a "last 14 days"
@@ -484,10 +497,12 @@ number per model.
 7. **Classify `Revert "…"` and non-conventional fix titles as rework** — 12 missed on one corpus,
    and in one case the miss caused the report to print an affirmative "no defect repair" about an
    arc whose only follow-up was a revert of itself (run 9, §8)
-8. **Make Tier 2's report distinguish a clean judgment from a failed call** — `tier2.mjs` already
-   logs five distinct outcomes to `hone.log`; only the renderer collapses them to
-   `"no finding (or Tier 2 call failed)"`. Until this lands, no per-model count in §6 or §10 is
-   trustworthy without cross-checking the log by hand (run 9)
+8. **Stamp `sessionId` and `model` on every Tier 2 log line, then make the report distinguish a
+   clean judgment from a failed call.** `tier2.mjs` already logs five distinct outcomes; the
+   renderer collapses them to `"no finding (or Tier 2 call failed)"` (run 9). **But the log as it
+   stands cannot fix this either** — `sessionId` is always null and there is no `model` field
+   (run 8), so it can only ever give a whole-run verdict, never a per-model one. Do the stamping
+   first; the renderer fix is worth little without it
 9. **Scope arc-builder's churn to the repo** — `heuristics.mjs:170` skips out-of-repo files; the
    churn path in `arc-builder.mjs:197` does not, so E and arc-builder disagree by construction and
    both call the result "edits." Run 8's biggest arc attributes a 345× file from a *different
