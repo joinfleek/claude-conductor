@@ -1,11 +1,11 @@
 {
-    "name": "claude-conductor-marketplace",
+    "name": "fleek-hone-ai",
     "owner": {
         "name": "Shubham Parashar"
     },
     "plugins": [
         {
-            "name": "claude-conductor",
+            "name": "hone",
             "source": "./",
             "description": "Model-routing ladder, memory nudges, persist-everywhere, and CLAUDE.md slimming for Claude Code."
         }

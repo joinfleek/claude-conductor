@@ -22,6 +22,16 @@
                         "type": "command",
                         "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/metrics-share-nudge.mjs",
                         "timeout": 5
+                    },
+                    {
+                        "type": "command",
+                        "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/hone-first-run-backfill.mjs",
+                        "timeout": 5
+                    },
+                    {
+                        "type": "command",
+                        "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/hone-checkpoint-safety-net.mjs",
+                        "timeout": 5
                     }
                 ]
             }
@@ -32,6 +42,11 @@
                     {
                         "type": "command",
                         "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/memory-nudge.mjs",
+                        "timeout": 5
+                    },
+                    {
+                        "type": "command",
+                        "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/hone-sweep-dispatch.mjs",
                         "timeout": 5
                     }
                 ]
