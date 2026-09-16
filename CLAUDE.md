@@ -13,12 +13,12 @@ friction during active work and turns it into harness improvements — **without
 session/conversation data ever leaving the developer's machine.** Reviewing this plugin's
 README turned up that it already implements most of the mechanism needed:
 
-- **`learn` skill** (`/learn`, developer-invoked) distills a reusable skill from what the
+- **`hone-learn` skill** (`/hone-learn`, developer-invoked) distills a reusable skill from what the
   session just solved, writes it to `~/.claude/skills-drafts/<name>/SKILL.md` — never directly
   into the live skills dir.
 - **`skill-harvest`** (nightly automated job) does the same by re-reading the last 24h of
   session transcripts.
-- **`model-router`'s GEPA-lite patch proposals** — when routing data shows an *existing* skill
+- **`hone-model-router`'s GEPA-lite patch proposals** — when routing data shows an *existing* skill
   is failing, writes a targeted patch to `~/.claude/skills-drafts/patches/` instead of editing
   it directly.
 - Nothing auto-promotes anywhere — a human reads the draft/patch and manually moves it into the
